@@ -447,7 +447,7 @@ function caStep3(){
     html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">set up your ministry</div>'
       +'<div class="fg"><label>church / ministry name</label><input type="text" id="ca-church" placeholder="e.g. River Community Church"></div>'
       +'<div class="fg"><label>your title / role</label><input type="text" id="ca-title" placeholder="e.g. Small Groups Pastor"></div>'
-      +'<div class="fg"><label>approximate number of groups</label><select id="ca-numgroups"><option>1-2</option><option>3-5</option><option>6-10</option><option>11-20</option><option>20+</option></select></div>';
+      +'<div class="fg"><label>approximate number of groups</label><select id="ca-numgroups"><option>1-10</option><option>11-25</option><option>26-50</option><option>50-99</option><option>100+</option></select></div>';
   } else if(caRole==='leader'){
     html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">set up your group</div>'
       +'<div class="fg"><label>group name</label><input type="text" id="ca-gname" placeholder="e.g. Thursday Night Crew"></div>'
@@ -1188,18 +1188,135 @@ function rReminders(){
     +'</div>';
 }
 
+var BIBLE_BOOKS=[
+  // Old Testament
+  {type:'Old Testament',title:'Genesis',desc:'The beginning of all things — creation, the fall, and God\'s covenant with his people.',tags:['creation','covenant','beginnings']},
+  {type:'Old Testament',title:'Exodus',desc:'God delivers his people from slavery and establishes his covenant at Sinai.',tags:['freedom','covenant','moses']},
+  {type:'Old Testament',title:'Leviticus',desc:'Laws and rituals that set Israel apart as a holy people before God.',tags:['holiness','worship','law']},
+  {type:'Old Testament',title:'Numbers',desc:'Israel\'s wilderness journey and the cost of faithlessness.',tags:['wilderness','faithfulness','journey']},
+  {type:'Old Testament',title:'Deuteronomy',desc:'Moses\' final words — a call to love God wholeheartedly and obey his commands.',tags:['obedience','love','renewal']},
+  {type:'Old Testament',title:'Joshua',desc:'God\'s faithfulness as Israel enters and conquers the promised land.',tags:['courage','faithfulness','promise']},
+  {type:'Old Testament',title:'Judges',desc:'A cycle of sin, suffering, and salvation in the days before Israel\'s kings.',tags:['sin','redemption','leadership']},
+  {type:'Old Testament',title:'Ruth',desc:'A beautiful story of loyalty, love, and redemption.',tags:['loyalty','redemption','love']},
+  {type:'Old Testament',title:'1 Samuel',desc:'The rise of Israel\'s monarchy and the life of King David.',tags:['leadership','calling','trust']},
+  {type:'Old Testament',title:'2 Samuel',desc:'David\'s reign — his triumphs, failures, and God\'s enduring grace.',tags:['grace','failure','kingship']},
+  {type:'Old Testament',title:'1 Kings',desc:'Solomon\'s wisdom and the divided kingdom.',tags:['wisdom','obedience','leadership']},
+  {type:'Old Testament',title:'2 Kings',desc:'The fall of Israel and Judah — a warning about unfaithfulness.',tags:['faithfulness','consequences','history']},
+  {type:'Old Testament',title:'1 Chronicles',desc:'A retelling of Israel\'s history with focus on worship and the Davidic line.',tags:['worship','history','legacy']},
+  {type:'Old Testament',title:'2 Chronicles',desc:'The temple, the kings, and the call to return to God.',tags:['worship','repentance','revival']},
+  {type:'Old Testament',title:'Ezra',desc:'The return from exile and restoration of worship in Jerusalem.',tags:['restoration','worship','rebuilding']},
+  {type:'Old Testament',title:'Nehemiah',desc:'Rebuilding the walls of Jerusalem against opposition.',tags:['leadership','perseverance','rebuilding']},
+  {type:'Old Testament',title:'Esther',desc:'A young woman\'s courage saves her people — God\'s hidden hand in history.',tags:['courage','providence','identity']},
+  {type:'Old Testament',title:'Job',desc:'Wrestling with suffering, faith, and the mystery of God\'s ways.',tags:['suffering','faith','trust']},
+  {type:'Old Testament',title:'Psalms',desc:'150 songs and prayers covering every human emotion — praise, lament, and trust.',tags:['prayer','worship','emotions']},
+  {type:'Old Testament',title:'Proverbs',desc:'Practical wisdom for everyday life — work, relationships, speech, and more.',tags:['wisdom','practical','everyday life']},
+  {type:'Old Testament',title:'Ecclesiastes',desc:'The search for meaning in a world under the sun.',tags:['meaning','purpose','wisdom']},
+  {type:'Old Testament',title:'Song of Solomon',desc:'A celebration of love, beauty, and intimacy.',tags:['love','relationships','beauty']},
+  {type:'Old Testament',title:'Isaiah',desc:'God\'s holiness, Israel\'s failure, and the coming hope of a Messiah.',tags:['hope','messiah','holiness']},
+  {type:'Old Testament',title:'Jeremiah',desc:'A prophet\'s painful calling to speak truth in difficult times.',tags:['perseverance','calling','hardship']},
+  {type:'Old Testament',title:'Lamentations',desc:'Grieving the destruction of Jerusalem — honest prayers in the darkest times.',tags:['grief','lament','hope']},
+  {type:'Old Testament',title:'Ezekiel',desc:'Visions, judgment, and the promise of spiritual renewal.',tags:['renewal','vision','restoration']},
+  {type:'Old Testament',title:'Daniel',desc:'Faithful living in a foreign culture — and God\'s sovereign rule over history.',tags:['faithfulness','courage','sovereignty']},
+  {type:'Old Testament',title:'Hosea',desc:'God\'s relentless love for an unfaithful people.',tags:['love','forgiveness','faithfulness']},
+  {type:'Old Testament',title:'Joel',desc:'A call to repentance and the promise of God\'s Spirit poured out.',tags:['repentance','spirit','restoration']},
+  {type:'Old Testament',title:'Amos',desc:'Justice, righteousness, and care for the poor.',tags:['justice','righteousness','social justice']},
+  {type:'Old Testament',title:'Obadiah',desc:'The shortest book — a warning against pride and injustice.',tags:['pride','justice','humility']},
+  {type:'Old Testament',title:'Jonah',desc:'Running from God, and discovering his scandalous mercy.',tags:['mercy','obedience','grace']},
+  {type:'Old Testament',title:'Micah',desc:'What does the Lord require? Justice, mercy, and humility.',tags:['justice','mercy','humility']},
+  {type:'Old Testament',title:'Nahum',desc:'God\'s justice against Nineveh — the oppressor falls.',tags:['justice','sovereignty','comfort']},
+  {type:'Old Testament',title:'Habakkuk',desc:'Wrestling with God\'s silence in the face of evil.',tags:['faith','doubt','trust']},
+  {type:'Old Testament',title:'Zephaniah',desc:'The day of the Lord — judgment and restoration.',tags:['judgment','restoration','hope']},
+  {type:'Old Testament',title:'Haggai',desc:'A call to prioritize God\'s house over our own comfort.',tags:['priorities','obedience','rebuilding']},
+  {type:'Old Testament',title:'Zechariah',desc:'Visions of hope and the coming of God\'s king.',tags:['hope','messiah','restoration']},
+  {type:'Old Testament',title:'Malachi',desc:'The final Old Testament voice — a call to return before the messenger comes.',tags:['return','faithfulness','preparation']},
+  // New Testament
+  {type:'New Testament',title:'Matthew',desc:'Jesus as the promised King — the Sermon on the Mount and the Great Commission.',tags:['jesus','kingdom','discipleship']},
+  {type:'New Testament',title:'Mark',desc:'The fast-paced, action-packed gospel of Jesus the servant.',tags:['jesus','service','action']},
+  {type:'New Testament',title:'Luke',desc:'Jesus\' compassion for the outsider, the poor, and the lost.',tags:['compassion','inclusion','jesus']},
+  {type:'New Testament',title:'John',desc:'The deep theological gospel — Jesus as the Word, the Light, and the Life.',tags:['jesus','belief','eternal life']},
+  {type:'New Testament',title:'Acts',desc:'The birth and spread of the early church through the Holy Spirit.',tags:['spirit','mission','church']},
+  {type:'New Testament',title:'Romans',desc:'The most systematic presentation of the gospel — grace, faith, and transformation.',tags:['gospel','grace','theology']},
+  {type:'New Testament',title:'1 Corinthians',desc:'Practical challenges in a messy church — unity, gifts, love, and resurrection.',tags:['unity','love','community']},
+  {type:'New Testament',title:'2 Corinthians',desc:'Strength in weakness and the ministry of reconciliation.',tags:['weakness','grace','ministry']},
+  {type:'New Testament',title:'Galatians',desc:'Freedom from the law — salvation by grace through faith alone.',tags:['grace','freedom','faith']},
+  {type:'New Testament',title:'Ephesians',desc:'Our identity in Christ and how to live it out in community.',tags:['identity','community','unity']},
+  {type:'New Testament',title:'Philippians',desc:'Joy and contentment even in the hardest circumstances.',tags:['joy','contentment','peace']},
+  {type:'New Testament',title:'Colossians',desc:'The supremacy of Christ over everything.',tags:['christ','supremacy','fullness']},
+  {type:'New Testament',title:'1 Thessalonians',desc:'Encouragement, hope, and the return of Christ.',tags:['hope','encouragement','return']},
+  {type:'New Testament',title:'2 Thessalonians',desc:'Standing firm in the face of hardship and false teaching.',tags:['perseverance','truth','endurance']},
+  {type:'New Testament',title:'1 Timothy',desc:'Leading well — instructions for life and leadership in the church.',tags:['leadership','church','character']},
+  {type:'New Testament',title:'2 Timothy',desc:'Paul\'s final words — finish well and hold onto the truth.',tags:['perseverance','legacy','truth']},
+  {type:'New Testament',title:'Titus',desc:'Sound doctrine and godly living in every area of life.',tags:['character','leadership','doctrine']},
+  {type:'New Testament',title:'Philemon',desc:'Forgiveness, reconciliation, and the radical equality of the gospel.',tags:['forgiveness','reconciliation','grace']},
+  {type:'New Testament',title:'Hebrews',desc:'Jesus as the ultimate high priest — better than anything that came before.',tags:['faith','endurance','jesus']},
+  {type:'New Testament',title:'James',desc:'Faith that works — practical Christianity in everyday life.',tags:['faith','action','wisdom']},
+  {type:'New Testament',title:'1 Peter',desc:'Hope and holiness for those suffering as strangers in the world.',tags:['suffering','hope','holiness']},
+  {type:'New Testament',title:'2 Peter',desc:'Guard against false teaching and grow in grace.',tags:['discernment','growth','truth']},
+  {type:'New Testament',title:'1 John',desc:'Assurance of salvation and the command to love one another.',tags:['love','assurance','community']},
+  {type:'New Testament',title:'2 John',desc:'Walking in truth and love — a short letter with a big message.',tags:['truth','love','discernment']},
+  {type:'New Testament',title:'3 John',desc:'Hospitality, generosity, and supporting God\'s work.',tags:['hospitality','generosity','support']},
+  {type:'New Testament',title:'Jude',desc:'Contend for the faith — a warning against false teachers.',tags:['discernment','truth','perseverance']},
+  {type:'New Testament',title:'Revelation',desc:'The ultimate victory of Christ over evil — hope for the suffering church.',tags:['hope','victory','worship']}
+];
+
 // --- RESOURCES ---
 function rResources(){
   if(CU.type==='ministry')document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddRes()">+ add resource</button>';
   var c=document.getElementById('pc');
+
+  // For real ministry leaders: show empty custom resources + full Bible list
+  // For demo: show demo resources
+  var customResources = DEMO_MODE ? RESOURCES : [];
+  var showBible = true;
+
   c.innerHTML='<div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,#FFF3E0,#FFF8F0);border-color:var(--accent-l)">'
     +'<div class="ct" style="margin-bottom:11px;color:var(--accent)">🧭 get a study recommendation</div>'
     +'<div style="font-size:14px;color:var(--mid);margin-bottom:14px">not sure what to study next? answer 3 quick questions and we\'ll suggest something based on your group.</div>'
     +'<button class="btn btn-a" onclick="moStudyQuiz()">get a recommendation →</button>'
     +'</div>'
-    +'<div style="display:grid;gap:14px">'
-    +RESOURCES.map(function(r){return '<div class="rc"><div class="rt">'+r.type+'</div><div class="rttl">'+r.title+'</div><div class="rdsc">'+r.desc+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'+(CU.type==='ministry'?'<button class="btn btn-g btn-sm" style="margin-top:11px" onclick="toast(\'resource removed\')">remove</button>':'')+'</div>'}).join('')
+
+    // Custom resources section
+    +(customResources.length > 0
+      ? '<div class="sec-title">📌 ministry resources</div>'
+        +'<div style="display:grid;gap:14px;margin-bottom:24px">'
+        +customResources.map(function(r){return '<div class="rc"><div class="rt">'+r.type+'</div><div class="rttl">'+r.title+'</div><div class="rdsc">'+r.desc+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'+(CU.type==='ministry'?'<button class="btn btn-g btn-sm" style="margin-top:11px" onclick="toast(\'resource removed\')">remove</button>':'')+'</div>'}).join('')
+        +'</div>'
+      : (!DEMO_MODE && CU.type==='ministry'
+          ? '<div class="card" style="margin-bottom:18px;text-align:center;padding:28px">'
+            +'<div style="font-size:36px;margin-bottom:10px">📌</div>'
+            +'<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:6px">no custom resources yet</div>'
+            +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">add video series, books, or other studies you recommend for your groups.</div>'
+            +'<button class="btn btn-p btn-sm" onclick="moAddRes()">+ add first resource</button>'
+            +'</div>'
+          : ''))
+
+    // Bible books section - always shown
+    +'<div class="sec-title" style="margin-top:8px">📖 books of the bible</div>'
+    +'<div class="tabs" id="bible-tabs">'
+    +'<div class="tab active" onclick="filterBible(\'all\',this)">all (66)</div>'
+    +'<div class="tab" onclick="filterBible(\'ot\',this)">old testament (39)</div>'
+    +'<div class="tab" onclick="filterBible(\'nt\',this)">new testament (27)</div>'
+    +'</div>'
+    +'<div id="bible-list" style="display:grid;gap:12px">'
+    +bibleBooksHtml(BIBLE_BOOKS)
     +'</div>';
+}
+
+function bibleBooksHtml(list){
+  return list.map(function(r){
+    return '<div class="rc"><div class="rt">'+r.type+'</div><div class="rttl">'+r.title+'</div><div class="rdsc">'+r.desc+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function filterBible(f, el){
+  document.querySelectorAll('#bible-tabs .tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  var list = f==='ot' ? BIBLE_BOOKS.filter(function(b){return b.type==='Old Testament'})
+           : f==='nt' ? BIBLE_BOOKS.filter(function(b){return b.type==='New Testament'})
+           : BIBLE_BOOKS;
+  document.getElementById('bible-list').innerHTML = bibleBooksHtml(list);
 }
 
 // --- MINISTRY GROUPS ---
@@ -1227,6 +1344,20 @@ function rGroups(){
 // --- MINISTRY HEALTH ---
 function rMinHealth(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">💚</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no health data yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:380px;margin:0 auto 24px">once your groups complete their first health assessment, results will appear here. assessments go out automatically on your chosen schedule.</div>'
+      +'<div style="display:grid;gap:10px;max-width:320px;margin:0 auto">'
+      +'<button class="btn btn-p" onclick="nav(\'reminders\')">🔔 remind groups to complete assessment</button>'
+      +'</div></div>'
+      +'<div class="card"><div class="ch"><span class="ct">assessment settings</span></div>'
+      +'<div class="fg"><label>assessment frequency</label><select onchange="toast(\'frequency updated ✅\')"><option>quarterly</option><option>monthly</option><option>bi-annually</option><option>annually</option></select></div>'
+      +'<button class="btn btn-p" onclick="toast(\'assessment sent to all groups 💚\')">send assessment to all groups now</button>'
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="card">'
     +'<div class="ch"><span class="ct">💚 group health — all groups</span></div>'
     +MGROUPS.map(function(g){return '<div style="padding:14px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><div style="font-weight:600;font-size:14px">'+g.n+'</div><span class="badge '+(g.h>=80?'b-g':g.h>=65?'b-b':'b-o')+'">'+g.h+'%</span></div><div class="hbt"><div class="hbf'+(g.h<65?' low':g.h<80?' med':'')+'" style="width:'+g.h+'%"></div></div>'+(g.h<70?'<div style="font-size:12px;color:var(--accent);margin-top:5px;font-weight:500">⚠️ coaching recommended</div>':'')+'</div>'}).join('')
