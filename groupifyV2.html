@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>groupify</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand:#2D6A4F;--brand-l:#52B788;--brand-p:#D8F3DC;--accent:#F4845F;--accent-l:#FDDCCC;
+  --dark:#1B2D24;--mid:#4A6558;--text:#2C3E35;--muted:#7A9688;--border:#D4E8DC;
+  --white:#fff;--bg:#F5FAF7;--shadow:0 2px 12px rgba(45,106,79,.08);--shadow-lg:0 8px 32px rgba(45,106,79,.14);
+  --r:16px;--rsm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* LOGIN */
+#s-login{background:linear-gradient(145deg,#1B2D24 0%,#2D6A4F 60%,#52B788 100%);align-items:center;justify-content:center;padding:24px}
+.lcard{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.llogo{font-family:'DM Serif Display',serif;font-size:46px;color:var(--brand);text-align:center;margin-bottom:4px}
+.ltag{text-align:center;color:var(--muted);font-size:14px;margin-bottom:32px}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:13px;font-weight:500;color:var(--mid);margin-bottom:6px}
+.fg input,.fg select,.fg textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:11px 15px;font-family:inherit;font-size:15px;color:var(--text);background:var(--bg);outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--brand-l);background:#fff}
+.fg textarea{resize:vertical;line-height:1.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:var(--rsm);font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;border:none;transition:all .2s;text-decoration:none;white-space:nowrap}
+.btn-p{background:var(--brand);color:#fff}.btn-p:hover{background:var(--dark);transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn-s{background:var(--brand-p);color:var(--brand)}.btn-s:hover{background:var(--border)}
+.btn-a{background:var(--accent);color:#fff}.btn-a:hover{background:#e06a45}
+.btn-g{background:transparent;color:var(--mid);border:1.5px solid var(--border)}.btn-g:hover{background:var(--brand-p);color:var(--brand);border-color:var(--brand-l)}
+.btn-sm{padding:7px 14px;font-size:13px}
+.btn-full{width:100%}
+.demo-sep{border-top:1px solid var(--border);margin-top:24px;padding-top:20px}
+.demo-sep p{text-align:center;font-size:12px;color:var(--muted);margin-bottom:10px}
+.demo-btn{display:block;width:100%;padding:11px;border-radius:var(--rsm);font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--mid);text-align:center;transition:all .2s;margin-bottom:8px;font-family:inherit}
+.demo-btn:hover{border-color:var(--brand-l);background:var(--brand-p);color:var(--brand)}
+.lswitch{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
+.lswitch a{color:var(--brand);font-weight:500;cursor:pointer;text-decoration:none}
+.lswitch a:hover{text-decoration:underline}
+.step-dots{display:flex;gap:8px;justify-content:center;margin-bottom:24px}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .2s}
+.step-dot.active{background:var(--brand);width:22px;border-radius:4px}
+.role-pick{display:grid;gap:10px;margin-bottom:20px}
+.role-opt{border:1.5px solid var(--border);border-radius:var(--rsm);padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px}
+.role-opt:hover{border-color:var(--brand-l);background:var(--brand-p)}
+.role-opt.sel{border-color:var(--brand);background:var(--brand-p)}
+.role-opt-em{font-size:22px}
+.role-opt-info .role-opt-title{font-size:14px;font-weight:600;color:var(--dark)}
+.role-opt-info .role-opt-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* APP SHELL */
+#s-app{flex-direction:row}
+.sidebar{width:256px;background:var(--dark);color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sb-logo{padding:26px 22px 18px;font-family:'DM Serif Display',serif;font-size:28px;color:var(--brand-l);border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-logo span{font-size:11px;font-family:'DM Sans',sans-serif;font-weight:400;color:rgba(255,255,255,.35);display:block;margin-top:-3px}
+.sb-user{padding:14px 22px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px}
+.u-av{width:36px;height:36px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.u-name{font-size:14px;font-weight:500}
+.u-role{font-size:11px;color:rgba(255,255,255,.4)}
+.sb-nav{padding:14px 0;flex:1}
+.nav-sec{padding:8px 22px 3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.28)}
+.ni{display:flex;align-items:center;gap:11px;padding:10px 22px;font-size:14px;color:rgba(255,255,255,.6);cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.ni:hover{background:rgba(255,255,255,.06);color:#fff}
+.ni.active{background:rgba(82,183,136,.15);color:var(--brand-l);border-left-color:var(--brand-l)}
+.ni-ic{font-size:17px;width:20px;text-align:center;flex-shrink:0}
+.sb-foot{padding:14px 22px;border-top:1px solid rgba(255,255,255,.07)}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:15px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar h1{font-family:'DM Serif Display',serif;font-size:24px;color:var(--dark)}
+.pc{padding:24px 28px;flex:1}
+
+/* CARDS */
+.card{background:#fff;border-radius:var(--r);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:18px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.ct{font-size:15px;font-weight:600;color:var(--dark)}
+.csub{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+/* STATS */
+.sc{background:#fff;border-radius:var(--r);padding:18px 22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.sc-em{font-size:26px;margin-bottom:6px}
+.sc-v{font-family:'DM Serif Display',serif;font-size:34px;color:var(--dark)}
+.sc-l{font-size:12px;color:var(--muted);margin-top:2px}
+.sc-c{font-size:12px;color:var(--brand);margin-top:3px;font-weight:500}
+
+/* NEXT MTG HERO */
+.mhero{background:linear-gradient(135deg,var(--brand) 0%,var(--brand-l) 100%);border-radius:var(--r);padding:26px;color:#fff;margin-bottom:18px;position:relative;overflow:hidden}
+.mhero::before{content:'';position:absolute;right:-20px;top:-20px;width:140px;height:140px;background:rgba(255,255,255,.06);border-radius:50%}
+.mhero::after{content:'';position:absolute;right:40px;bottom:-30px;width:90px;height:90px;background:rgba(255,255,255,.05);border-radius:50%}
+.mh-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.4px;opacity:.65;margin-bottom:7px}
+.mh-title{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:14px}
+.mh-details{display:flex;gap:20px;flex-wrap:wrap}
+.mh-d{display:flex;align-items:center;gap:7px;font-size:14px;opacity:.9}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:500}
+.b-g{background:var(--brand-p);color:var(--brand)}
+.b-o{background:var(--accent-l);color:var(--accent)}
+.b-b{background:#E0F0FF;color:#1A6FAA}
+.b-pu{background:#EDE9FF;color:#5B45C0}
+
+/* PRAYER */
+.pi{border:1px solid var(--border);border-radius:var(--rsm);padding:15px;margin-bottom:11px;transition:all .2s}
+.pi:hover{border-color:var(--brand-l);box-shadow:var(--shadow)}
+.pi.ans{border-color:var(--brand-l);background:var(--brand-p)}
+.pmeta{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.pau{font-size:13px;font-weight:500;color:var(--mid)}
+.pdt{font-size:12px;color:var(--muted)}
+.ptxt{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:11px}
+.pacts{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.pray-btn{background:none;border:1.5px solid var(--brand-l);color:var(--brand);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+.pray-btn:hover,.pray-btn.prayed{background:var(--brand);color:#fff;border-color:var(--brand)}
+.pc2{font-size:12px;color:var(--muted)}
+
+/* ICEBREAKER */
+.icard{background:linear-gradient(135deg,#2D3561 0%,#5B45C0 100%);border-radius:var(--r);padding:26px;color:#fff;margin-bottom:18px}
+.ilbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.4px;opacity:.6;margin-bottom:9px}
+.iq{font-family:'DM Serif Display',serif;font-size:21px;line-height:1.45}
+.itip{font-size:13px;opacity:.6;margin-top:11px}
+
+/* ACHIEVEMENTS */
+.ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
+.ai{text-align:center;padding:18px 10px;border-radius:var(--rsm);border:1.5px solid var(--border);background:#fff}
+.ai.earned{border-color:var(--brand-l);background:var(--brand-p)}
+.ai.locked{opacity:.35}
+.ai-em{font-size:32px;margin-bottom:7px}
+.ai-n{font-size:12px;font-weight:600;color:var(--dark)}
+.ai-d{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* SCHEDULE SLOTS */
+.tsg{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:14px}
+.ts{border:1.5px solid var(--border);border-radius:8px;padding:9px 5px;text-align:center;cursor:pointer;transition:all .15s;font-size:12px}
+.ts:hover{border-color:var(--brand-l);background:var(--brand-p)}
+.ts.voted{background:var(--brand);color:#fff;border-color:var(--brand)}
+.ts.top{border-color:var(--accent);background:var(--accent-l)}
+.ts .tsday{font-weight:600;font-size:11px;margin-bottom:2px}
+.ts .tsvotes{font-size:10px;opacity:.7;margin-top:3px}
+
+/* ASSESSMENT */
+.aq{margin-bottom:26px}
+.aqt{font-size:15px;font-weight:500;color:var(--dark);margin-bottom:13px;line-height:1.5}
+.rr{display:flex;gap:9px;align-items:center}
+.rl{font-size:12px;color:var(--muted);width:58px}
+.rl.right{text-align:right}
+.rbs{display:flex;gap:7px;flex:1;justify-content:center}
+.rb{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--mid);font-family:inherit}
+.rb:hover{border-color:var(--brand-l);color:var(--brand)}
+.rb.sel{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+/* HEALTH BARS */
+.hbr{margin-bottom:14px}
+.hbl{display:flex;justify-content:space-between;font-size:13px;color:var(--mid);margin-bottom:5px}
+.hbt{background:var(--border);border-radius:5px;height:9px}
+.hbf{height:9px;border-radius:5px;background:var(--brand);transition:width .8s ease}
+.hbf.med{background:var(--accent)}
+.hbf.low{background:#E07070}
+
+/* ATTENDANCE */
+.mr{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.mr:last-child{border-bottom:none}
+.mav{width:34px;height:34px;border-radius:50%;background:var(--brand-p);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--brand);margin-right:11px;flex-shrink:0}
+.mname{flex:1;font-size:14px;font-weight:500}
+.mrole{font-size:12px;color:var(--muted)}
+.atbtn{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--mid);font-family:inherit;transition:all .15s}
+.atbtn.present{background:var(--brand);color:#fff;border-color:var(--brand)}
+.atbtn.absent{background:#FDECEA;color:#C0392B;border-color:#F1A9A0}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--bg);border-radius:var(--rsm);padding:4px;margin-bottom:20px}
+.tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s;white-space:nowrap}
+.tab.active{background:#fff;color:var(--brand);box-shadow:var(--shadow)}
+
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:20px}
+.mo.open{display:flex}
+.md{background:#fff;border-radius:20px;padding:30px;width:100%;max-width:500px;box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto}
+.md h2{font-family:'DM Serif Display',serif;font-size:23px;margin-bottom:18px;color:var(--dark)}
+.mc{float:right;background:var(--bg);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:15px;color:var(--muted);display:flex;align-items:center;justify-content:center}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark);color:#fff;padding:13px 20px;border-radius:var(--rsm);font-size:14px;z-index:200;transform:translateY(70px);opacity:0;transition:all .3s;box-shadow:var(--shadow-lg);max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* GROUP CARDS */
+.gc{border:1px solid var(--border);border-radius:var(--rsm);padding:16px;background:#fff;transition:all .2s;cursor:pointer}
+.gc:hover{border-color:var(--brand-l);box-shadow:var(--shadow)}
+.gcn{font-size:15px;font-weight:600;color:var(--dark)}
+
+/* MISC */
+.divider{height:1px;background:var(--border);margin:18px 0}
+.sec-title{font-size:13px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.ir{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.ir:last-child{border-bottom:none}
+.il{font-size:13px;color:var(--muted);width:125px;flex-shrink:0;padding-top:1px}
+.iv{font-size:14px;color:var(--text);font-weight:500;line-height:1.55}
+.chip{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--bg);border:1px solid var(--border);color:var(--mid);cursor:pointer;transition:all .15s;display:inline-block}
+.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.rotitem{display:flex;align-items:center;gap:11px;padding:11px;border-radius:var(--rsm);border:1px solid var(--border);margin-bottom:9px}
+.rotitem.nx{border-color:var(--brand-l);background:var(--brand-p)}
+.rotord{width:26px;height:26px;border-radius:50%;background:var(--brand-p);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.rotitem.nx .rotord{background:var(--brand);color:#fff}
+.rc{border:1px solid var(--border);border-radius:var(--rsm);padding:16px;background:#fff;margin-bottom:12px}
+.rt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px}
+.rttl{font-size:15px;font-weight:600;color:var(--dark);margin-bottom:4px}
+.rdsc{font-size:13px;color:var(--muted);line-height:1.5}
+
+@media(max-width:768px){
+.sidebar{display:none}
+.g2,.g3,.g4{grid-template-columns:1fr}
+.pc{padding:16px}
+.topbar{padding:12px 16px}
+.tsg{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div id="s-login" class="screen active">
+  <div class="lcard">
+    <!-- SIGN IN VIEW -->
+    <div id="view-signin">
+      <div class="llogo">groupify</div>
+      <div class="ltag">small groups, big community 🌱</div>
+      <div class="fg"><label>email</label><input type="email" id="si-email" placeholder="you@email.com"></div>
+      <div class="fg"><label>password</label><input type="password" id="si-pw" placeholder="••••••••"></div>
+      <button class="btn btn-p btn-full" onclick="loginAs('member')">sign in</button>
+      <div class="lswitch" style="margin-top:14px">don't have an account? <a onclick="showCreateAccount()">create one →</a></div>
+      <div class="demo-sep">
+        <p>demo — tap to sign in as:</p>
+        <button class="demo-btn" onclick="loginAs('ministry')">⛪ ministry leader</button>
+        <button class="demo-btn" onclick="loginAs('leader')">👥 group leader</button>
+        <button class="demo-btn" onclick="loginAs('member')">🙋 group member</button>
+      </div>
+    </div>
+
+    <!-- CREATE ACCOUNT: STEP 1 — ROLE -->
+    <div id="view-ca1" style="display:none">
+      <div class="llogo" style="font-size:34px;margin-bottom:4px">groupify</div>
+      <div class="ltag">create your account</div>
+      <div class="step-dots">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+      <div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:4px">what's your role?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">this helps us set up the right experience for you.</div>
+      <div class="role-pick">
+        <div class="role-opt" id="ro-ministry" onclick="selRole('ministry')">
+          <div class="role-opt-em">⛪</div>
+          <div class="role-opt-info">
+            <div class="role-opt-title">ministry leader</div>
+            <div class="role-opt-sub">oversee multiple groups, view stats & health</div>
+          </div>
+        </div>
+        <div class="role-opt" id="ro-leader" onclick="selRole('leader')">
+          <div class="role-opt-em">👥</div>
+          <div class="role-opt-info">
+            <div class="role-opt-title">group leader</div>
+            <div class="role-opt-sub">lead a small group, track meetings & members</div>
+          </div>
+        </div>
+        <div class="role-opt" id="ro-member" onclick="selRole('member')">
+          <div class="role-opt-em">🙋</div>
+          <div class="role-opt-info">
+            <div class="role-opt-title">group member</div>
+            <div class="role-opt-sub">join a group, pray, connect & grow together</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-p btn-full" onclick="caStep2()">continue →</button>
+      <div class="lswitch">already have an account? <a onclick="showSignIn()">sign in</a></div>
+    </div>
+
+    <!-- CREATE ACCOUNT: STEP 2 — DETAILS -->
+    <div id="view-ca2" style="display:none">
+      <div class="llogo" style="font-size:34px;margin-bottom:4px">groupify</div>
+      <div class="ltag">create your account</div>
+      <div class="step-dots">
+        <div class="step-dot"></div>
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+      </div>
+      <div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">your info</div>
+      <div class="fg"><label>first name</label><input type="text" id="ca-fname" placeholder="first name"></div>
+      <div class="fg"><label>last name</label><input type="text" id="ca-lname" placeholder="last name"></div>
+      <div class="fg"><label>email</label><input type="email" id="ca-email" placeholder="you@email.com"></div>
+      <div class="fg"><label>password</label><input type="password" id="ca-pw" placeholder="at least 8 characters"></div>
+      <div class="fg"><label>confirm password</label><input type="password" id="ca-pw2" placeholder="confirm your password"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-g" onclick="caBack1()" style="flex-shrink:0">← back</button>
+        <button class="btn btn-p btn-full" onclick="caStep3()">continue →</button>
+      </div>
+      <div class="lswitch">already have an account? <a onclick="showSignIn()">sign in</a></div>
+    </div>
+
+    <!-- CREATE ACCOUNT: STEP 3 — GROUP SETUP -->
+    <div id="view-ca3" style="display:none">
+      <div class="llogo" style="font-size:34px;margin-bottom:4px">groupify</div>
+      <div class="ltag">create your account</div>
+      <div class="step-dots">
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot active"></div>
+      </div>
+      <div id="ca3-content"></div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-g" onclick="caBack2()" style="flex-shrink:0">← back</button>
+        <button class="btn btn-p btn-full" onclick="caFinish()">create account 🎉</button>
+      </div>
+      <div class="lswitch">already have an account? <a onclick="showSignIn()">sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<div id="s-app" class="screen">
+  <div class="sidebar">
+    <div class="sb-logo">groupify <span id="sb-role-lbl">group member</span></div>
+    <div class="sb-user">
+      <div class="u-av" id="sb-av">S</div>
+      <div><div class="u-name" id="sb-name">Sarah M.</div><div class="u-role" id="sb-role">group member</div></div>
+    </div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-foot"><button class="btn btn-g btn-sm btn-full" onclick="logout()">sign out</button></div>
+  </div>
+  <div class="main">
+    <div class="topbar"><h1 id="pg-title">home</h1><div id="topbar-acts"></div></div>
+    <div class="pc" id="pc"></div>
+  </div>
+</div>
+
+<div class="mo" id="modal-ov" onclick="closeMo(event)">
+  <div class="md" id="modal-ct"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var CU=null,asmAns={},asmDone=false,votedSlots=new Set([3]);
+var caRole=null;
+
+// --- CREATE ACCOUNT FLOW ---
+function showCreateAccount(){
+  document.getElementById('view-signin').style.display='none';
+  document.getElementById('view-ca1').style.display='block';
+  caRole=null;
+}
+function showSignIn(){
+  ['view-ca1','view-ca2','view-ca3'].forEach(function(id){document.getElementById(id).style.display='none'});
+  document.getElementById('view-signin').style.display='block';
+}
+function selRole(r){
+  caRole=r;
+  document.querySelectorAll('.role-opt').forEach(function(el){el.classList.remove('sel')});
+  document.getElementById('ro-'+r).classList.add('sel');
+}
+function caStep2(){
+  if(!caRole){toast('please select your role 👆');return}
+  document.getElementById('view-ca1').style.display='none';
+  document.getElementById('view-ca2').style.display='block';
+}
+function caBack1(){
+  document.getElementById('view-ca2').style.display='none';
+  document.getElementById('view-ca1').style.display='block';
+}
+function caStep3(){
+  var fn=document.getElementById('ca-fname').value.trim();
+  var ln=document.getElementById('ca-lname').value.trim();
+  var em=document.getElementById('ca-email').value.trim();
+  var pw=document.getElementById('ca-pw').value;
+  var pw2=document.getElementById('ca-pw2').value;
+  if(!fn||!ln){toast('please enter your name 😊');return}
+  if(!em||em.indexOf('@')<0){toast('please enter a valid email 📧');return}
+  if(pw.length<8){toast('password must be at least 8 characters 🔒');return}
+  if(pw!==pw2){toast("passwords don't match — try again 🔒");return}
+  // Build step 3 content based on role
+  var html='';
+  if(caRole==='ministry'){
+    html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">set up your ministry</div>'
+      +'<div class="fg"><label>church / ministry name</label><input type="text" id="ca-church" placeholder="e.g. River Community Church"></div>'
+      +'<div class="fg"><label>your title / role</label><input type="text" id="ca-title" placeholder="e.g. Small Groups Pastor"></div>'
+      +'<div class="fg"><label>approximate number of groups</label><select id="ca-numgroups"><option>1-2</option><option>3-5</option><option>6-10</option><option>11-20</option><option>20+</option></select></div>';
+  } else if(caRole==='leader'){
+    html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">set up your group</div>'
+      +'<div class="fg"><label>group name</label><input type="text" id="ca-gname" placeholder="e.g. Thursday Night Crew"></div>'
+      +'<div class="fg"><label>when did your group start?</label><input type="date" id="ca-gstart" value="'+new Date().toISOString().split('T')[0]+'"></div>'
+      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, set the actual start date — you\'ll instantly earn all your milestone badges!</div>'
+      +'<div class="fg"><label>join an existing ministry? (optional)</label><input type="text" id="ca-mcode" placeholder="enter ministry code if you have one"></div>';
+  } else {
+    html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">join a group</div>'
+      +'<div class="fg"><label>group invite code</label><input type="text" id="ca-icode" placeholder="enter the code your leader gave you"></div>'
+      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 don\'t have a code yet? no problem — you can join a group after signing up.</div>'
+      +'<div class="fg"><label>how did you hear about groupify?</label><select><option>my group leader</option><option>my church</option><option>a friend</option><option>online search</option><option>other</option></select></div>';
+  }
+  document.getElementById('ca3-content').innerHTML=html;
+  document.getElementById('view-ca2').style.display='none';
+  document.getElementById('view-ca3').style.display='block';
+}
+function caBack2(){
+  document.getElementById('view-ca3').style.display='none';
+  document.getElementById('view-ca2').style.display='block';
+}
+function caFinish(){
+  var fn=document.getElementById('ca-fname')?document.getElementById('ca-fname').value.trim():'';
+  var ln=document.getElementById('ca-lname')?document.getElementById('ca-lname').value.trim():'';
+  // Build user from form
+  var newUser={name:fn+' '+ln,init:(fn[0]||'?')+(ln[0]||''),role:caRole==='ministry'?'ministry leader':caRole==='leader'?'group leader':'group member',type:caRole};
+  CU=newUser;
+  document.getElementById('view-ca3').style.display='none';
+  document.getElementById('s-login').classList.remove('active');
+  document.getElementById('s-app').classList.add('active');
+  document.getElementById('sb-name').textContent=CU.name;
+  document.getElementById('sb-role').textContent=CU.role;
+  document.getElementById('sb-av').textContent=CU.init;
+  document.getElementById('sb-role-lbl').textContent=CU.role;
+  buildNav();
+  nav('home');
+  toast('welcome to groupify, '+fn+'! 🎉');
+}
+
+var USERS={
+  ministry:{name:'Pastor Dave',init:'PD',role:'ministry leader',type:'ministry'},
+  leader:{name:'Marcus T.',init:'MT',role:'group leader',type:'leader'},
+  member:{name:'Sarah M.',init:'SM',role:'group member',type:'member'}
+};
+
+var GD={
+  name:'Thursday Night Crew',study:'The Book of James',
+  hw:'Read James 2:14-26 and journal about a time your faith led to action.',
+  start:'2021-09-15',
+  next:{day:'Thursday, March 6',time:'7:00 PM',loc:"Marcus & Jenna's"},
+  freq:'Weekly',
+  members:[
+    {n:'Marcus T.',i:'MT',r:'leader',p:true},
+    {n:'Jenna T.',i:'JT',r:'co-leader',p:true},
+    {n:'Sarah M.',i:'SM',r:'member',p:false},
+    {n:'Derek R.',i:'DR',r:'prayer coordinator',p:true},
+    {n:'Amy C.',i:'AC',r:'member',p:null},
+    {n:'Chris W.',i:'CW',r:'hospitality',p:null},
+    {n:'Lila B.',i:'LB',r:'member',p:null}
+  ],
+  stats:{meetings:127,prayers:89,answered:23,books:6}
+};
+
+var PRAYERS=[
+  {id:1,au:'Derek R.',txt:"Prayers for my mom's surgery next Tuesday — she's nervous and I want peace for our whole family.",dt:'Feb 22',ans:false,cnt:4,prayed:false},
+  {id:2,au:'Amy C.',txt:'Job interview this Friday — hoping for wisdom and calm confidence.',dt:'Feb 23',ans:false,cnt:7,prayed:true},
+  {id:3,au:'Marcus T.',txt:'Grateful our lease got renewed! God is so faithful. 🙏',dt:'Feb 20',ans:true,anote:'Lease renewed with even better terms!',cnt:12,prayed:false},
+  {id:4,au:'Sarah M.',txt:'Struggling with anxiety lately — please pray for rest and peace in my mind.',dt:'Feb 18',ans:false,cnt:9,prayed:false}
+];
+
+var IQ=[
+  "what's a meal that instantly takes you back to your childhood?",
+  "if you could have dinner with anyone from history, who would it be and what would you ask them?",
+  "what's one thing most people don't know about you that you wish they did?",
+  "what's the best advice someone ever gave you, and did you actually take it?",
+  "what's a place in the world that changed you, and why?",
+  "if your life had a movie soundtrack, what song would be playing right now?",
+  "when was the last time you laughed so hard you cried?",
+  "what's one thing you believed was true five years ago that you now disagree with?",
+  "what's something you're currently learning or trying to get better at?",
+  "if you could relive one ordinary day from your life, which would you choose?",
+  "what's a fear you've overcome, and how did you do it?",
+  "if your house was on fire and you could only grab three things, what would they be?",
+  "what's something that always makes you feel closer to God?",
+  "what's one habit that has changed your life for the better?",
+  "who was the most influential person in your spiritual journey, and why?",
+  "what's a dream you've let go of, and one you're still holding onto?",
+  "what's the kindest thing someone has done for you in the past year?",
+  "what does a perfect Saturday look like for you?",
+  "what's one thing you'd tell your 20-year-old self?",
+  "what's something you find genuinely funny that others might not get?"
+];
+
+var SCHED=[
+  {day:'Mon',time:'7pm',votes:2},{day:'Tue',time:'7pm',votes:1},
+  {day:'Wed',time:'7pm',votes:4},{day:'Thu',time:'7pm',votes:6},
+  {day:'Fri',time:'6pm',votes:3},{day:'Sat',time:'10am',votes:2},
+  {day:'Sun',time:'6pm',votes:1}
+];
+
+var MGROUPS=[
+  {n:'Thursday Night Crew',l:'Marcus T.',m:7,h:87,lm:'Feb 22'},
+  {n:'Sunday Morning Sisters',l:'Carla M.',m:9,h:73,lm:'Feb 23'},
+  {n:'Young Professionals',l:'Ethan K.',m:11,h:65,lm:'Feb 20'},
+  {n:'Neighborhood Connect',l:'Rita & Joe P.',m:6,h:91,lm:'Feb 22'},
+  {n:'Empty Nesters Life Group',l:'Bob W.',m:8,h:58,lm:'Feb 15'}
+];
+
+var RESOURCES=[
+  {type:'Bible Study',title:'The Book of James',desc:'A practical look at living out faith in everyday life.',tags:['faith','action','wisdom']},
+  {type:'Bible Study',title:'The Book of Philippians',desc:'Joy and contentment even in difficult seasons.',tags:['joy','peace','gratitude']},
+  {type:'Video Series',title:"It's Not Supposed to Be This Way",desc:'Lysa TerKeurst on finding unexpected strength when life lets us down.',tags:['hardship','hope']},
+  {type:'Bible Study',title:'Sermon on the Mount',desc:'Matthew 5–7 — Kingdom living as Jesus described it.',tags:['discipleship','character']},
+  {type:'Video Series',title:'The Chosen — Season 1',desc:'Watch and discuss the life of Jesus through the eyes of those who knew him.',tags:['jesus','community']}
+];
+
+var ROTATION=[
+  {n:"Marcus & Jenna T.",a:'5 Oak Lane'},{n:'Derek R.',a:'22 Pine St'},
+  {n:'Amy C.',a:'101 Maple Ave'},{n:'Chris W.',a:'88 Birch Rd'}
+];
+
+var BADGES=[
+  {em:'🌱',n:'first meeting',d:'met for the first time',e:true},
+  {em:'🔟',n:'10 meetings',d:'10 group meetings completed',e:true},
+  {em:'💯',n:'100 meetings',d:'100 group meetings together',e:true},
+  {em:'🙏',n:'prayer warrior',d:'50+ prayers submitted',e:true},
+  {em:'✨',n:'answered prayer',d:'first answered prayer logged',e:true},
+  {em:'📖',n:'bookworm',d:'completed first full book study',e:true},
+  {em:'🗓️',n:'1 year strong',d:'celebrating 1 year together',e:true},
+  {em:'🎉',n:'3 years!',d:'three incredible years together',e:true},
+  {em:'❤️',n:'deep roots',d:'5+ years of doing life together',e:false},
+  {em:'🏆',n:'health champion',d:'scored 90+ on group health',e:false},
+  {em:'🌍',n:'six books',d:'studied 6 books of the Bible',e:true},
+  {em:'🌟',n:'dozen answered',d:'12 answered prayers logged',e:true}
+];
+
+var AQ=[
+  {q:'how connected do you feel to the other members of your group?',lo:'distant',hi:'deeply connected'},
+  {q:'how safe do you feel sharing honestly about your life in this group?',lo:'unsafe',hi:'completely safe'},
+  {q:'how engaged is your group in studying scripture together?',lo:'minimal',hi:'fully engaged'},
+  {q:'how well does your group support each other through hard times?',lo:'not much',hi:'always there'},
+  {q:'how likely are you to invite a friend to join this group?',lo:'not likely',hi:'definitely'}
+];
+
+var NAV={
+  ministry:[
+    {id:'home',ic:'🏠',lb:'dashboard'},
+    {id:'groups',ic:'👥',lb:'all groups'},
+    {id:'hresults',ic:'💚',lb:'group health'},
+    {id:'resources',ic:'📚',lb:'resources'},
+    {id:'reminders',ic:'🔔',lb:'send reminders'},
+    {id:'stats',ic:'📊',lb:'ministry stats'}
+  ],
+  leader:[
+    {id:'home',ic:'🏠',lb:'home'},
+    {id:'nextmtg',ic:'📅',lb:'next meeting'},
+    {id:'attendance',ic:'✅',lb:'attendance'},
+    {id:'prayers',ic:'🙏',lb:'prayer wall'},
+    {id:'icebreaker',ic:'💬',lb:'icebreaker'},
+    {id:'schedule',ic:'🗓️',lb:'scheduling'},
+    {id:'rotation',ic:'🏡',lb:'location rotation'},
+    {id:'assessment',ic:'💚',lb:'group health'},
+    {id:'milestones',ic:'🏆',lb:'milestones'},
+    {id:'resources',ic:'📚',lb:'resources'},
+    {id:'members',ic:'👤',lb:'manage members'},
+    {id:'reminders',ic:'🔔',lb:'reminders'}
+  ],
+  member:[
+    {id:'home',ic:'🏠',lb:'home'},
+    {id:'nextmtg',ic:'📅',lb:'next meeting'},
+    {id:'prayers',ic:'🙏',lb:'prayer wall'},
+    {id:'icebreaker',ic:'💬',lb:'icebreaker'},
+    {id:'schedule',ic:'🗓️',lb:'scheduling poll'},
+    {id:'assessment',ic:'💚',lb:'group health'},
+    {id:'milestones',ic:'🏆',lb:'milestones'},
+    {id:'resources',ic:'📚',lb:'resources'}
+  ]
+};
+
+var TITLES={
+  home:'home',groups:'all groups',hresults:'group health overview',resources:'resources',
+  reminders:'send reminders',stats:'ministry stats',nextmtg:'next meeting',
+  attendance:'attendance',prayers:'prayer wall',icebreaker:'icebreaker & connection',
+  schedule:'scheduling poll',rotation:'location rotation',assessment:'group health check-in',
+  milestones:'milestones & badges',members:'manage members',hdetail:'group health results'
+};
+
+function loginAs(t){
+  CU=Object.assign({},USERS[t]);
+  document.getElementById('s-login').classList.remove('active');
+  document.getElementById('s-app').classList.add('active');
+  document.getElementById('sb-name').textContent=CU.name;
+  document.getElementById('sb-role').textContent=CU.role;
+  document.getElementById('sb-av').textContent=CU.init;
+  document.getElementById('sb-role-lbl').textContent=CU.role;
+  buildNav();
+  nav('home');
+}
+
+function logout(){
+  CU=null;
+  document.getElementById('s-app').classList.remove('active');
+  document.getElementById('s-login').classList.add('active');
+}
+
+function buildNav(){
+  var html='';
+  NAV[CU.type].forEach(function(item){
+    html+='<div class="ni" id="ni-'+item.id+'" onclick="nav(\''+item.id+'\')">'
+      +'<span class="ni-ic">'+item.ic+'</span><span>'+item.lb+'</span></div>';
+  });
+  document.getElementById('sb-nav').innerHTML=html;
+}
+
+function nav(pg){
+  document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active')});
+  var nel=document.getElementById('ni-'+pg);
+  if(nel)nel.classList.add('active');
+  document.getElementById('pg-title').textContent=TITLES[pg]||pg;
+  document.getElementById('topbar-acts').innerHTML='';
+  render(pg);
+}
+
+function yrs(){return Math.floor((Date.now()-new Date(GD.start))/(365.25*24*3600*1000))}
+
+function render(pg){
+  var c=document.getElementById('pc');
+  c.innerHTML='';
+  var fn={
+    home:function(){CU.type==='ministry'?rMinHome():rMemHome()},
+    groups:rGroups,hresults:rMinHealth,resources:rResources,reminders:rReminders,stats:rStats,
+    nextmtg:rNextMtg,attendance:rAttendance,prayers:rPrayers,icebreaker:rIcebreaker,
+    schedule:rSchedule,rotation:rRotation,
+    assessment:function(){asmDone?rHDetail():rAssessment()},
+    milestones:rMilestones,members:rMembers,hdetail:rHDetail
+  };
+  if(fn[pg])fn[pg]();
+}
+
+// --- MINISTRY HOME ---
+function rMinHome(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="g4" style="margin-bottom:18px">'
+    +'<div class="sc"><div class="sc-em">⛪</div><div class="sc-v">5</div><div class="sc-l">active groups</div></div>'
+    +'<div class="sc"><div class="sc-em">👥</div><div class="sc-v">41</div><div class="sc-l">total members</div></div>'
+    +'<div class="sc"><div class="sc-em">🙏</div><div class="sc-v">89</div><div class="sc-l">prayers this month</div></div>'
+    +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">23</div><div class="sc-l">answered prayers</div></div>'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div><div class="card"><div class="ch"><span class="ct">group health overview</span><button class="btn btn-g btn-sm" onclick="nav(\'hresults\')">see all →</button></div>'
+    +MGROUPS.map(function(g){return '<div class="hbr"><div class="hbl"><span>'+g.n+'</span><span>'+g.h+'%</span></div><div class="hbt"><div class="hbf'+(g.h<65?' low':g.h<80?' med':'')+'" style="width:'+g.h+'%"></div></div></div>'}).join('')
+    +'</div></div>'
+    +'<div><div class="card"><div class="ch"><span class="ct">needs attention</span></div>'
+    +MGROUPS.filter(function(g){return g.h<70}).map(function(g){return '<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:14px">'+g.n+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">health: '+g.h+'% · last met '+g.lm+'</div><button class="btn btn-s btn-sm" style="margin-top:8px" onclick="toast(\'reminder sent to '+g.n+' leader 📬\')">send check-in</button></div>'}).join('')
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">quick actions</span></div>'
+    +'<div style="display:grid;gap:9px">'
+    +'<button class="btn btn-p" onclick="nav(\'reminders\')">🔔 send reminder to all groups</button>'
+    +'<button class="btn btn-s" onclick="nav(\'hresults\')">💚 view health assessments</button>'
+    +'<button class="btn btn-g" onclick="nav(\'resources\')">📚 manage resources</button>'
+    +'</div></div>'
+    +'</div></div>';
+}
+
+// --- MEMBER / LEADER HOME ---
+function rMemHome(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="mhero"><div class="mh-lbl">📅 next meeting</div>'
+    +'<div class="mh-title">'+GD.name+'</div>'
+    +'<div class="mh-details">'
+    +'<div class="mh-d">🗓️ '+GD.next.day+'</div>'
+    +'<div class="mh-d">⏰ '+GD.next.time+'</div>'
+    +'<div class="mh-d">📍 '+GD.next.loc+'</div>'
+    +'</div></div>'
+    +'<div class="g2">'
+    +'<div>'
+    +'<div class="icard"><div class="ilbl">💬 this week\'s icebreaker</div>'
+    +'<div class="iq">"'+IQ[2]+'"</div>'
+    +'<div class="itip">kick off your meeting with this question 🌟</div></div>'
+    +'<div class="card"><div class="ch"><span class="ct">📖 current study</span></div>'
+    +'<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:7px">'+GD.study+'</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6"><strong>homework:</strong> '+GD.hw+'</div>'
+    +(CU.type==='leader'?'<button class="btn btn-s btn-sm" onclick="moEditStudy()">edit study info</button>':'')
+    +'</div></div>'
+    +'<div>'
+    +'<div class="card"><div class="ch"><span class="ct">🙏 recent prayers</span><button class="btn btn-g btn-sm" onclick="nav(\'prayers\')">see all →</button></div>'
+    +PRAYERS.slice(0,2).map(function(p){return '<div class="pi'+(p.ans?' ans':'')+'"><div class="pmeta"><span class="pau">'+p.au+'</span><span class="pdt">'+p.dt+'</span></div><div class="ptxt">'+p.txt.substring(0,80)+(p.txt.length>80?'...':'')+'</div><div class="pacts"><button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button><span class="pc2">'+p.cnt+' praying</span>'+(p.ans?'<span class="badge b-g">✨ answered!</span>':'')+'</div></div>'}).join('')
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">🏆 group stats</span><button class="btn btn-g btn-sm" onclick="nav(\'milestones\')">see all →</button></div>'
+    +'<div class="g2" style="gap:11px">'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+GD.stats.meetings+'</div><div style="font-size:12px;color:var(--muted)">meetings</div></div>'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+yrs()+'</div><div style="font-size:12px;color:var(--muted)">years together</div></div>'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+GD.stats.answered+'</div><div style="font-size:12px;color:var(--muted)">answered prayers ✨</div></div>'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+GD.stats.books+'</div><div style="font-size:12px;color:var(--muted)">books studied 📖</div></div>'
+    +'</div></div></div></div>';
+}
+
+// --- NEXT MEETING ---
+function rNextMtg(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="mhero" style="margin-bottom:22px"><div class="mh-lbl">📅 coming up</div>'
+    +'<div class="mh-title">'+GD.next.day+'</div>'
+    +'<div class="mh-details">'
+    +'<div class="mh-d">⏰ '+GD.next.time+'</div>'
+    +'<div class="mh-d">📍 '+GD.next.loc+'</div>'
+    +'<div class="mh-d">🔁 '+GD.freq+'</div>'
+    +'</div>'
+    +(CU.type==='leader'?'<button class="btn btn-a" style="margin-top:16px" onclick="moEditMtg()">edit meeting details</button>':'')
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="card"><div class="ch"><span class="ct">📖 study & homework</span></div>'
+    +'<div class="ir"><div class="il">current study</div><div class="iv">'+GD.study+'</div></div>'
+    +'<div class="ir"><div class="il">homework</div><div class="iv">'+GD.hw+'</div></div>'
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">💬 icebreaker question</span></div>'
+    +'<div style="background:var(--bg);border-radius:var(--rsm);padding:16px;font-family:\'DM Serif Display\',serif;font-size:18px;color:var(--dark);line-height:1.5;margin-bottom:11px">"'+IQ[2]+'"</div>'
+    +'<div style="font-size:13px;color:var(--muted)">share this with your group to start the conversation 🌟</div>'
+    +'</div></div>'
+    +'<div class="card"><div class="ch"><span class="ct">📍 location rotation</span><button class="btn btn-g btn-sm" onclick="nav(\'rotation\')">manage →</button></div>'
+    +'<div class="g2">'
+    +ROTATION.slice(0,2).map(function(loc,i){return '<div class="rotitem'+(i===0?' nx':'')+'"><div class="rotord">'+(i===0?'📍':(i+1))+'</div><div><div style="font-size:14px;font-weight:600">'+loc.n+'</div><div style="font-size:12px;color:var(--muted)">'+loc.a+'</div>'+(i===0?'<div style="font-size:12px;color:var(--brand);font-weight:600;margin-top:3px">hosting next!</div>':'')+'</div></div>'}).join('')
+    +'</div></div>';
+}
+
+// --- PRAYERS ---
+function rPrayers(){
+  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddPrayer()">+ add prayer</button>';
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="g2" style="margin-bottom:18px">'
+    +'<div class="sc"><div class="sc-em">🙏</div><div class="sc-v">'+PRAYERS.length+'</div><div class="sc-l">prayer requests</div></div>'
+    +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">'+PRAYERS.filter(function(p){return p.ans}).length+'</div><div class="sc-l">answered prayers</div></div>'
+    +'</div>'
+    +'<div class="tabs">'
+    +'<div class="tab active" onclick="filterP(\'all\',this)">all ('+PRAYERS.length+')</div>'
+    +'<div class="tab" onclick="filterP(\'active\',this)">active ('+PRAYERS.filter(function(p){return !p.ans}).length+')</div>'
+    +'<div class="tab" onclick="filterP(\'ans\',this)">answered ('+PRAYERS.filter(function(p){return p.ans}).length+')</div>'
+    +'</div>'
+    +'<div id="plist">'+prayerListHtml(PRAYERS)+'</div>';
+}
+
+function prayerListHtml(list){
+  return list.map(function(p){
+    return '<div class="pi'+(p.ans?' ans':'')+'"><div class="pmeta"><span class="pau">'+p.au+'</span><span class="pdt">'+p.dt+'</span></div>'
+      +'<div class="ptxt">'+p.txt+'</div>'
+      +(p.ans?'<div style="font-size:13px;color:var(--brand);margin-bottom:9px;font-weight:500">✨ answered: '+p.anote+'</div>':'')
+      +'<div class="pacts">'
+      +'<button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button>'
+      +'<span class="pc2" id="pc-'+p.id+'">'+p.cnt+' '+(p.cnt===1?'person':'people')+' praying</span>'
+      +(!p.ans&&CU.type==='leader'?'<button class="btn btn-s btn-sm" onclick="moMarkAns('+p.id+')">mark answered</button>':'')
+      +(p.ans?'<span class="badge b-g">✨ answered!</span>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+function filterP(f,el){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  var list=f==='all'?PRAYERS:f==='ans'?PRAYERS.filter(function(p){return p.ans}):PRAYERS.filter(function(p){return !p.ans});
+  document.getElementById('plist').innerHTML=prayerListHtml(list);
+}
+
+function togPray(id,btn){
+  var p=PRAYERS.find(function(x){return x.id===id});if(!p)return;
+  p.prayed=!p.prayed;p.cnt+=p.prayed?1:-1;
+  btn.classList.toggle('prayed',p.prayed);
+  btn.textContent='🙏 '+(p.prayed?'prayed!':'i prayed');
+  var c=document.getElementById('pc-'+id);
+  if(c)c.textContent=p.cnt+' '+(p.cnt===1?'person':'people')+' praying';
+  toast('prayer recorded 🙏');
+}
+
+// --- ICEBREAKER ---
+function rIcebreaker(){
+  var qi=Math.floor(Date.now()/(7*24*3600*1000))%IQ.length;
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="icard" style="margin-bottom:22px"><div class="ilbl">💬 this week\'s question</div>'
+    +'<div class="iq">"'+IQ[qi]+'"</div>'
+    +'<div class="itip" style="margin-top:14px">a new question is delivered each week 🌀</div></div>'
+    +'<div class="card"><div class="ch"><span class="ct">how to use this</span></div>'
+    +'<div style="font-size:14px;color:var(--mid);line-height:1.8">'
+    +'<p>📌 <strong>before your study:</strong> share this question and give everyone 1-2 minutes to think, then go around the group.</p>'
+    +'<p style="margin-top:9px">💡 <strong>tip:</strong> the leader goes first to model vulnerability and set the tone.</p>'
+    +'<p style="margin-top:9px">⏱️ <strong>time:</strong> aim for 10-15 minutes max so you have time for your study.</p>'
+    +'</div></div>'
+    +'<div class="card"><div class="ch"><span class="ct">upcoming questions</span></div>'
+    +IQ.slice(qi+1,qi+4).map(function(q,i){return '<div style="padding:13px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--mid)"><span style="font-weight:600;color:var(--muted);font-size:12px">in '+(i+1)+' week'+(i>0?'s':'')+'</span><div style="margin-top:4px">"'+q+'"</div></div>'}).join('')
+    +'</div>';
+}
+
+// --- SCHEDULE ---
+function rSchedule(){
+  var c=document.getElementById('pc');
+  var isLeader=(CU.type==='leader'||CU.type==='ministry');
+  // Build the poll options section
+  var pollHtml='';
+  if(SCHED.length===0){
+    pollHtml='<div style="text-align:center;padding:32px;color:var(--muted)">'
+      +'<div style="font-size:36px;margin-bottom:10px">🗓️</div>'
+      +'<div style="font-size:14px">no time options yet.</div>'
+      +(isLeader?'<div style="font-size:13px;margin-top:4px">add options below for your group to vote on.</div>':'<div style="font-size:13px;margin-top:4px">your leader hasn\'t added options yet — check back soon!</div>')
+      +'</div>';
+  } else {
+    pollHtml='<div class="tsg">'
+      +SCHED.map(function(s,i){
+        return '<div class="ts'+(votedSlots.has(i)?' voted':'')+(s.votes>=5?' top':'')+'" onclick="togVote('+i+',this)">'
+          +'<div class="tsday">'+s.day+'</div>'
+          +'<div>'+s.time+'</div>'
+          +'<div class="tsvotes" id="tv-'+i+'">'+s.votes+' vote'+(s.votes!==1?'s':'')+'</div>'
+          +(isLeader?'<div style="font-size:10px;margin-top:4px;opacity:.6;cursor:pointer" onclick="event.stopPropagation();removeSchedSlot('+i+')">remove</div>':'')
+          +'</div>';
+      }).join('')
+      +'</div>'
+      +'<div style="display:flex;gap:14px;margin-top:16px;flex-wrap:wrap">'
+      +'<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><div style="width:13px;height:13px;background:var(--brand);border-radius:3px"></div>your votes</div>'
+      +'<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><div style="width:13px;height:13px;background:var(--accent-l);border:1.5px solid var(--accent);border-radius:3px"></div>most popular</div>'
+      +'</div>';
+  }
+
+  var addOptHtml='';
+  if(isLeader){
+    addOptHtml='<div class="card" style="margin-bottom:18px">'
+      +'<div class="ch"><span class="ct">✏️ manage poll options</span></div>'
+      +'<div style="font-size:14px;color:var(--muted);margin-bottom:16px">add the time slots you want your group to vote on. members will see these options and pick what works for them.</div>'
+      +'<div class="g2" style="margin-bottom:12px">'
+      +'<div class="fg" style="margin-bottom:0"><label>day</label>'
+      +'<select id="new-sched-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
+      +'<div class="fg" style="margin-bottom:0"><label>time</label>'
+      +'<select id="new-sched-time"><option>6:00 AM</option><option>7:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>12:00 PM</option><option>5:00 PM</option><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option></select></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +'<button class="btn btn-p" onclick="addSchedSlot()">+ add this option</button>'
+      +'<button class="btn btn-g" onclick="clearSchedSlots()" style="color:#C0392B;border-color:#F1A9A0">clear all options</button>'
+      +'</div>'
+      +'<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)">💡 tip: add 4–8 options across different days and times for the best results. members vote for all times that work for them.</div>'
+      +'</div>';
+  }
+
+  c.innerHTML=addOptHtml
+    +'<div class="card" style="margin-bottom:18px">'
+    +'<div class="ch"><span class="ct">📅 vote on your next meeting time</span>'
+    +(isLeader?'<button class="btn btn-g btn-sm" onclick="toast(\'poll link copied! 📋\')">share poll</button>':'')
+    +'</div>'
+    +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px">vote for all times that work for you.</div>'
+    +pollHtml
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">set a regular rhythm</span></div>'
+    +'<div style="font-size:14px;color:var(--muted);margin-bottom:16px">once you\'ve found a time that works, lock it in as your regular meeting rhythm.</div>'
+    +'<div class="g2">'
+    +'<div class="fg"><label>meeting day</label><select><option>Thursday</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Friday</option></select></div>'
+    +'<div class="fg"><label>time</label><select><option>7:00 PM</option><option>6:30 PM</option><option>6:00 PM</option><option>7:30 PM</option></select></div>'
+    +'<div class="fg"><label>frequency</label><select><option>Weekly</option><option>Every other week</option><option>Monthly</option></select></div>'
+    +'</div><button class="btn btn-p" onclick="toast(\'meeting rhythm saved 📅\')">save rhythm</button></div>';
+}
+
+function addSchedSlot(){
+  var day=document.getElementById('new-sched-day').value;
+  var time=document.getElementById('new-sched-time').value;
+  // Check for duplicate
+  var exists=SCHED.some(function(s){return s.day===day&&s.time===time});
+  if(exists){toast('that option is already in the poll 😊');return}
+  SCHED.push({day:day,time:time,votes:0});
+  rSchedule();
+  toast('option added! ✅');
+}
+
+function removeSchedSlot(i){
+  SCHED.splice(i,1);
+  votedSlots.clear();
+  rSchedule();
+  toast('option removed');
+}
+
+function clearSchedSlots(){
+  if(!confirm('remove all poll options?'))return;
+  SCHED=[];votedSlots=new Set();
+  rSchedule();
+  toast('poll cleared');
+}
+
+function togVote(i,el){
+  var s=SCHED[i];if(!s)return;
+  if(votedSlots.has(i)){votedSlots.delete(i);el.classList.remove('voted');s.votes--}
+  else{votedSlots.add(i);el.classList.add('voted');s.votes++}
+  var tv=document.getElementById('tv-'+i);
+  if(tv)tv.textContent=s.votes+' vote'+(s.votes!==1?'s':'');
+  toast('vote saved 🗳️');
+}
+
+// --- ASSESSMENT ---
+function rAssessment(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card" style="max-width:640px;margin:0 auto">'
+    +'<div style="text-align:center;margin-bottom:26px">'
+    +'<div style="font-size:38px;margin-bottom:7px">💚</div>'
+    +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:7px">group health check-in</div>'
+    +'<div style="font-size:14px;color:var(--muted);line-height:1.6">this is anonymous — your answers combine with your group\'s to show overall trends. takes about 2 minutes.</div>'
+    +'</div>'
+    +AQ.map(function(q,qi){
+      return '<div class="aq"><div class="aqt">'+q.q+'</div>'
+        +'<div class="rr"><div class="rl">'+q.lo+'</div>'
+        +'<div class="rbs">'+[1,2,3,4,5].map(function(n){return '<button class="rb" id="q'+qi+'-'+n+'" onclick="selR('+qi+','+n+')">'+n+'</button>'}).join('')+'</div>'
+        +'<div class="rl right">'+q.hi+'</div></div></div>';
+    }).join('')
+    +'<button class="btn btn-p btn-full" style="margin-top:6px" onclick="subAsm()">submit my responses</button>'
+    +'</div>';
+}
+
+function selR(qi,n){
+  asmAns[qi]=n;
+  [1,2,3,4,5].forEach(function(i){var el=document.getElementById('q'+qi+'-'+i);if(el)el.classList.remove('sel')});
+  var el=document.getElementById('q'+qi+'-'+n);if(el)el.classList.add('sel');
+}
+
+function subAsm(){
+  if(Object.keys(asmAns).length<AQ.length){toast('please answer all questions 😊');return}
+  asmDone=true;
+  render('hdetail');
+  document.getElementById('pg-title').textContent='group health results';
+}
+
+// --- HEALTH DETAIL ---
+function rHDetail(){
+  var scores=[
+    {l:'connection & belonging',s:82},
+    {l:'psychological safety',s:76},
+    {l:'scripture engagement',s:88},
+    {l:'mutual support',s:79},
+    {l:'group invitation & openness',s:65}
+  ];
+  var overall=Math.round(scores.reduce(function(a,b){return a+b.s},0)/scores.length);
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card" style="text-align:center;margin-bottom:18px">'
+    +'<div style="font-size:54px;font-family:\'DM Serif Display\',serif;color:var(--brand)">'+overall+'%</div>'
+    +'<div style="font-size:18px;font-weight:600;color:var(--dark);margin-bottom:5px">overall group health</div>'
+    +'<div style="font-size:13px;color:var(--muted)">based on 6 responses · last assessed Feb 18</div>'
+    +'<span class="badge b-g" style="margin-top:11px;display:inline-flex">💪 above average</span>'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="card"><div class="ct" style="margin-bottom:14px">health breakdown</div>'
+    +scores.map(function(s){return '<div class="hbr"><div class="hbl"><span>'+s.l+'</span><span>'+s.s+'%</span></div><div class="hbt"><div class="hbf'+(s.s<65?' low':s.s<78?' med':'')+'" style="width:'+s.s+'%"></div></div></div>'}).join('')
+    +'</div>'
+    +'<div>'
+    +'<div class="card"><div class="ct" style="margin-bottom:12px">🌟 areas of strength</div>'
+    +'<div style="font-size:14px;color:var(--mid);line-height:1.7">'
+    +'<p>✅ your group shows strong <strong>scripture engagement</strong> — members find the study time meaningful.</p>'
+    +'<p style="margin-top:9px">✅ <strong>connection and belonging</strong> is high — people genuinely feel they belong here.</p>'
+    +'</div></div>'
+    +'<div class="card"><div class="ct" style="margin-bottom:12px">🌱 areas to grow</div>'
+    +'<div style="font-size:14px;color:var(--mid);line-height:1.7">'
+    +'<p>📈 <strong>group invitation & openness</strong> scored lowest (65%). members may hesitate to invite others.</p>'
+    +'</div></div>'
+    +'<div class="card" style="background:var(--brand-p);border-color:var(--brand-l)">'
+    +'<div class="ct" style="margin-bottom:11px;color:var(--brand)">💡 coaching tip</div>'
+    +'<div style="font-size:14px;color:var(--brand);line-height:1.7">try dedicating one meeting to discussing what makes your group special — then challenge each member to invite one person in the next 30 days.</div>'
+    +'</div>'
+    +'</div></div>';
+}
+
+// --- MILESTONES ---
+function rMilestones(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="g4" style="margin-bottom:22px">'
+    +'<div class="sc"><div class="sc-em">📅</div><div class="sc-v">'+GD.stats.meetings+'</div><div class="sc-l">total meetings</div></div>'
+    +'<div class="sc"><div class="sc-em">🎂</div><div class="sc-v">'+yrs()+'</div><div class="sc-l">years together</div></div>'
+    +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">'+GD.stats.answered+'</div><div class="sc-l">answered prayers</div></div>'
+    +'<div class="sc"><div class="sc-em">📖</div><div class="sc-v">'+GD.stats.books+'</div><div class="sc-l">books studied</div></div>'
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">🏅 group badges</span><span style="font-size:13px;color:var(--muted)">'+BADGES.filter(function(b){return b.e}).length+'/'+BADGES.length+' earned</span></div>'
+    +'<div class="ag">'+BADGES.map(function(b){return '<div class="ai'+(b.e?' earned':' locked')+'"><div class="ai-em">'+b.em+'</div><div class="ai-n">'+b.n+'</div><div class="ai-d">'+b.d+'</div></div>'}).join('')+'</div></div>'
+    +'<div class="card"><div class="ch"><span class="ct">📖 books of the Bible studied</span></div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'
+    +['James','Philippians','John','Matthew','Romans','Psalms'].map(function(b){return '<span class="chip on">'+b+'</span>'}).join('')
+    +['Genesis','Revelation','Acts','Proverbs'].map(function(b){return '<span class="chip">'+b+'</span>'}).join('')
+    +'</div>'
+    +'<div style="font-size:13px;color:var(--muted)">6 books completed · 60 to go! keep studying 📖</div>'
+    +'</div>';
+}
+
+// --- ATTENDANCE ---
+function rAttendance(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card" style="margin-bottom:18px">'
+    +'<div class="ch"><div><div class="ct">📋 mark attendance</div><div class="csub">Thursday, Feb 22 · 7:00 PM · Marcus & Jenna\'s</div></div>'
+    +'<button class="btn btn-p btn-sm" onclick="toast(\'attendance saved ✅\')">save attendance</button></div>'
+    +GD.members.map(function(m,i){return '<div class="mr"><div class="mav">'+m.i+'</div><div style="flex:1"><div class="mname">'+m.n+'</div><div class="mrole">'+m.r+'</div></div><div style="display:flex;gap:7px"><button class="atbtn'+(m.p===true?' present':'')+'" onclick="setAtt(this,\'p\')">✓ present</button><button class="atbtn'+(m.p===false?' absent':'')+'" onclick="setAtt(this,\'a\')">✗ absent</button></div></div>'}).join('')
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">📊 attendance trends</span></div>'
+    +'<div class="g4">'
+    +'<div class="sc"><div class="sc-v">78%</div><div class="sc-l">avg attendance</div></div>'
+    +'<div class="sc"><div class="sc-v">5/7</div><div class="sc-l">last meeting</div></div>'
+    +'<div class="sc"><div class="sc-v">7</div><div class="sc-l">current streak 🔥</div></div>'
+    +'<div class="sc"><div class="sc-v">127</div><div class="sc-l">total meetings</div></div>'
+    +'</div></div>';
+}
+
+function setAtt(btn,v){
+  var row=btn.closest('.mr');
+  row.querySelectorAll('.atbtn').forEach(function(b){b.classList.remove('present','absent')});
+  btn.classList.add(v==='p'?'present':'absent');
+}
+
+// --- ROTATION ---
+function rRotation(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card">'
+    +'<div class="ch"><span class="ct">🏡 location rotation</span><button class="btn btn-s btn-sm" onclick="toast(\'rotation updated 🏡\')">edit order</button></div>'
+    +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">track whose home is next so nobody has to guess. the next host is highlighted automatically.</div>'
+    +ROTATION.map(function(loc,i){return '<div class="rotitem'+(i===0?' nx':'')+'"><div class="rotord">'+(i===0?'📍':(i+1))+'</div><div style="flex:1"><div style="font-size:14px;font-weight:600">'+loc.n+'</div><div style="font-size:12px;color:var(--muted)">'+loc.a+'</div>'+(i===0?'<div style="font-size:12px;color:var(--brand);font-weight:600;margin-top:3px">hosting next meeting!</div>':'')+'</div>'+(i===0?'<span class="badge b-g">next up</span>':'')+'</div>'}).join('')
+    +'<button class="btn btn-s" style="margin-top:14px" onclick="moAddHost()">+ add host</button>'
+    +'</div>';
+}
+
+// --- MEMBERS ---
+function rMembers(){
+  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="toast(\'invite link copied! 📋\')">+ invite member</button>';
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card">'
+    +'<div class="ch"><span class="ct">👥 group members ('+GD.members.length+')</span></div>'
+    +GD.members.map(function(m){return '<div class="mr"><div class="mav">'+m.i+'</div><div style="flex:1"><div class="mname">'+m.n+'</div><div class="mrole">'+m.r+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge '+(m.r.includes('leader')?'b-g':'b-b')+'">'+m.r+'</span><button class="btn btn-g btn-sm" onclick="moEditRole(\''+m.n+'\')">edit role</button></div></div>'}).join('')
+    +'</div>';
+}
+
+// --- REMINDERS ---
+function rReminders(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card">'
+    +'<div class="ch"><span class="ct">🔔 send a reminder</span></div>'
+    +'<div class="fg"><label>send to</label><select><option>all group members</option><option>group leaders only</option>'
+    +(CU.type==='ministry'?'<option>all groups in ministry</option><option>specific group leader</option>':'')
+    +'</select></div>'
+    +'<div class="fg"><label>reminder type</label><select><option>upcoming meeting reminder</option><option>fill out group health assessment</option><option>study recommendation survey</option><option>mark attendance</option><option>custom message</option></select></div>'
+    +'<div class="fg"><label>message (optional)</label><textarea rows="3" placeholder="add a personal note..."></textarea></div>'
+    +'<button class="btn btn-p" onclick="toast(\'reminder sent! 📬\')">send reminder</button>'
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">⚙️ automatic reminders</span></div>'
+    +[
+      {l:'meeting reminder',d:'sent 24 hours before each meeting',on:true},
+      {l:'attendance reminder',d:'sent after each meeting to leader',on:true},
+      {l:'group health assessment',d:'sent quarterly to all members',on:true},
+      {l:'study survey',d:'sent when leader requests it',on:false}
+    ].map(function(r){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px;font-weight:600">'+r.l+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+r.d+'</div></div><input type="checkbox"'+(r.on?' checked':'')+'style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand)" onchange="toast(\'preference saved ✅\')"></div>'}).join('')
+    +'</div>';
+}
+
+// --- RESOURCES ---
+function rResources(){
+  if(CU.type==='ministry')document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddRes()">+ add resource</button>';
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,#FFF3E0,#FFF8F0);border-color:var(--accent-l)">'
+    +'<div class="ct" style="margin-bottom:11px;color:var(--accent)">🧭 get a study recommendation</div>'
+    +'<div style="font-size:14px;color:var(--mid);margin-bottom:14px">not sure what to study next? answer 3 quick questions and we\'ll suggest something based on your group.</div>'
+    +'<button class="btn btn-a" onclick="moStudyQuiz()">get a recommendation →</button>'
+    +'</div>'
+    +'<div style="display:grid;gap:14px">'
+    +RESOURCES.map(function(r){return '<div class="rc"><div class="rt">'+r.type+'</div><div class="rttl">'+r.title+'</div><div class="rdsc">'+r.desc+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'+(CU.type==='ministry'?'<button class="btn btn-g btn-sm" style="margin-top:11px" onclick="toast(\'resource removed\')">remove</button>':'')+'</div>'}).join('')
+    +'</div>';
+}
+
+// --- MINISTRY GROUPS ---
+function rGroups(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="g4" style="margin-bottom:22px">'
+    +'<div class="sc"><div class="sc-em">👥</div><div class="sc-v">5</div><div class="sc-l">active groups</div></div>'
+    +'<div class="sc"><div class="sc-em">🙋</div><div class="sc-v">41</div><div class="sc-l">total members</div></div>'
+    +'<div class="sc"><div class="sc-em">💚</div><div class="sc-v">75%</div><div class="sc-l">avg health score</div></div>'
+    +'<div class="sc"><div class="sc-em">📅</div><div class="sc-v">23</div><div class="sc-l">meetings this month</div></div>'
+    +'</div><div style="display:grid;gap:13px">'
+    +MGROUPS.map(function(g){return '<div class="gc"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><div class="gcn">'+g.n+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">led by '+g.l+' · '+g.m+' members</div></div><div style="display:flex;align-items:center;gap:9px"><span class="badge '+(g.h>=80?'b-g':g.h>=65?'b-b':'b-o')+'">'+g.h+'% health</span><button class="btn btn-g btn-sm" onclick="toast(\'reminder sent 📬\')">send reminder</button></div></div><div class="hbt"><div class="hbf'+(g.h<65?' low':g.h<80?' med':'')+'" style="width:'+g.h+'%"></div></div><div style="font-size:12px;color:var(--muted);margin-top:5px">last met: '+g.lm+'</div></div>'}).join('')
+    +'</div>';
+}
+
+// --- MINISTRY HEALTH ---
+function rMinHealth(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="card">'
+    +'<div class="ch"><span class="ct">💚 group health — all groups</span></div>'
+    +MGROUPS.map(function(g){return '<div style="padding:14px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><div style="font-weight:600;font-size:14px">'+g.n+'</div><span class="badge '+(g.h>=80?'b-g':g.h>=65?'b-b':'b-o')+'">'+g.h+'%</span></div><div class="hbt"><div class="hbf'+(g.h<65?' low':g.h<80?' med':'')+'" style="width:'+g.h+'%"></div></div>'+(g.h<70?'<div style="font-size:12px;color:var(--accent);margin-top:5px;font-weight:500">⚠️ coaching recommended</div>':'')+'</div>'}).join('')
+    +'</div>'
+    +'<div class="card"><div class="ch"><span class="ct">assessment settings</span></div>'
+    +'<div class="fg"><label>assessment frequency</label><select onchange="toast(\'frequency updated ✅\')"><option>quarterly</option><option>monthly</option><option>bi-annually</option><option>annually</option></select></div>'
+    +'<button class="btn btn-p" onclick="toast(\'assessment sent to all groups 💚\')">send assessment to all groups now</button>'
+    +'</div>';
+}
+
+// --- STATS ---
+function rStats(){
+  var c=document.getElementById('pc');
+  c.innerHTML='<div class="g4" style="margin-bottom:22px">'
+    +'<div class="sc"><div class="sc-em">⛪</div><div class="sc-v">5</div><div class="sc-l">groups</div><div class="sc-c">↑ 1 this quarter</div></div>'
+    +'<div class="sc"><div class="sc-em">👥</div><div class="sc-v">41</div><div class="sc-l">total members</div><div class="sc-c">↑ 6 this quarter</div></div>'
+    +'<div class="sc"><div class="sc-em">🙏</div><div class="sc-v">342</div><div class="sc-l">prayers this year</div><div class="sc-c">↑ 12% vs last year</div></div>'
+    +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">87</div><div class="sc-l">answered prayers</div><div class="sc-c">↑ 23 this quarter</div></div>'
+    +'</div>'
+    +'<div class="g2">'
+    +'<div class="sc"><div class="sc-em">📅</div><div class="sc-v">247</div><div class="sc-l">total meetings this year</div></div>'
+    +'<div class="sc"><div class="sc-em">📖</div><div class="sc-v">18</div><div class="sc-l">books of the Bible studied across groups</div></div>'
+    +'<div class="sc"><div class="sc-em">💚</div><div class="sc-v">75%</div><div class="sc-l">avg group health score</div><div class="sc-c">↑ 4pts from last quarter</div></div>'
+    +'<div class="sc"><div class="sc-em">🏅</div><div class="sc-v">83</div><div class="sc-l">total badges earned</div></div>'
+    +'</div>';
+}
+
+// --- MODALS ---
+function openMo(html){document.getElementById('modal-ct').innerHTML=html;document.getElementById('modal-ov').classList.add('open')}
+function closeMo(e){if(!e||e.target===document.getElementById('modal-ov'))document.getElementById('modal-ov').classList.remove('open')}
+
+function moAddPrayer(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>🙏 add a prayer request</h2>'
+    +'<div class="fg"><label>your prayer request</label><textarea rows="4" id="np" placeholder="share what\'s on your heart..."></textarea></div>'
+    +'<div class="fg"><label>category (optional)</label><select><option>general</option><option>health</option><option>relationships</option><option>work / finances</option><option>praise & gratitude</option></select></div>'
+    +'<button class="btn btn-p btn-full" onclick="subPrayer()">post prayer request 🙏</button>');
+}
+
+function subPrayer(){
+  var t=document.getElementById('np').value;
+  if(!t.trim()){toast('please write your prayer request 😊');return}
+  PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'today',ans:false,cnt:0,prayed:false});
+  closeMo();rPrayers();toast('prayer request posted 🙏');
+}
+
+function moMarkAns(id){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>🎉 mark as answered</h2>'
+    +'<p style="color:var(--muted);font-size:14px;margin-bottom:18px">"'+PRAYERS.find(function(p){return p.id===id}).txt+'"</p>'
+    +'<div class="fg"><label>how did God answer this prayer?</label><textarea rows="3" id="anote" placeholder="share how this was answered..."></textarea></div>'
+    +'<button class="btn btn-p btn-full" onclick="confAns('+id+')">mark as answered ✨</button>');
+}
+
+function confAns(id){
+  var note=document.getElementById('anote').value||'God is faithful!';
+  var p=PRAYERS.find(function(x){return x.id===id});
+  p.ans=true;p.anote=note;
+  closeMo();rPrayers();toast('🎉 answered prayer logged!');
+}
+
+function moEditMtg(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>edit meeting details</h2>'
+    +'<div class="fg"><label>meeting day</label><input type="text" value="'+GD.next.day+'"></div>'
+    +'<div class="fg"><label>time</label><input type="text" value="'+GD.next.time+'"></div>'
+    +'<div class="fg"><label>location</label><input type="text" value="'+GD.next.loc+'"></div>'
+    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'meeting details updated 📅\')">save changes</button>');
+}
+
+function moEditStudy(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>📖 edit study info</h2>'
+    +'<div class="fg"><label>current study</label><input type="text" value="'+GD.study+'"></div>'
+    +'<div class="fg"><label>homework for next meeting</label><textarea rows="3">'+GD.hw+'</textarea></div>'
+    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'study info updated 📖\')">save</button>');
+}
+
+function moEditRole(name){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>edit role</h2>'
+    +'<div class="fg"><label>assign role for '+name+'</label><select><option>member</option><option>co-leader</option><option>prayer coordinator</option><option>hospitality</option><option>worship coordinator</option><option>attendance recorder</option></select></div>'
+    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'role updated ✅\')">save</button>');
+}
+
+function moAddRes(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>📚 add a resource</h2>'
+    +'<div class="fg"><label>title</label><input type="text" placeholder="resource name"></div>'
+    +'<div class="fg"><label>type</label><select><option>Bible Study</option><option>Video Series</option><option>Book</option><option>Devotional</option></select></div>'
+    +'<div class="fg"><label>description</label><textarea rows="3" placeholder="brief description..."></textarea></div>'
+    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'resource added 📚\')">add resource</button>');
+}
+
+function moAddHost(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>🏡 add host to rotation</h2>'
+    +'<div class="fg"><label>name</label><input type="text" placeholder="host\'s name"></div>'
+    +'<div class="fg"><label>address</label><input type="text" placeholder="street address"></div>'
+    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'host added to rotation 🏡\')">add to rotation</button>');
+}
+
+function moStudyQuiz(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>🧭 study recommendation</h2>'
+    +'<div class="fg"><label>what topic does your group need most right now?</label><select><option>faith in action</option><option>prayer & spiritual disciplines</option><option>community & relationships</option><option>navigating hardship</option><option>identity in Christ</option></select></div>'
+    +'<div class="fg"><label>how long has your group been meeting?</label><select><option>just starting</option><option>less than 1 year</option><option>1-3 years</option><option>3+ years</option></select></div>'
+    +'<div class="fg"><label>preferred format</label><select><option>book of the Bible</option><option>video-based curriculum</option><option>book study</option><option>no preference</option></select></div>'
+    +'<button class="btn btn-a btn-full" onclick="closeMo();toast(\'recommendation: try The Book of James! 📖\')">get my recommendation →</button>');
+}
+
+// --- TOAST ---
+var toastTimer;
+function toast(msg){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.classList.remove('show')},2800);
+}
+</script>
+</body>
+</html>
