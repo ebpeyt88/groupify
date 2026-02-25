@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>groupify</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --brand:#2D6A4F;--brand-l:#52B788;--brand-p:#D8F3DC;--accent:#F4845F;--accent-l:#FDDCCC;
@@ -231,7 +232,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="ltag">small groups, big community 🌱</div>
       <div class="fg"><label>email</label><input type="email" id="si-email" placeholder="you@email.com"></div>
       <div class="fg"><label>password</label><input type="password" id="si-pw" placeholder="••••••••"></div>
-      <button class="btn btn-p btn-full" onclick="loginAs('member')">sign in</button>
+      <button class="btn btn-p btn-full" onclick="realSignIn()">sign in</button>
       <div class="lswitch" style="margin-top:14px">don't have an account? <a onclick="showCreateAccount()">create one →</a></div>
       <div class="demo-sep">
         <p>demo — tap to sign in as:</p>
@@ -343,8 +344,67 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="toast" id="toast"></div>
 
 <script>
+// --- SUPABASE INIT ---
+const SUPA_URL = 'https://yhwiabbbbzudtjknzzbl.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlod2lhYmJiYnp1ZHRqa256emJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNTY4NjgsImV4cCI6MjA4NzYzMjg2OH0.P_86ElyvMF2q6HXlrmvhbbo-txcnnXKXckcYsGk_Ocs';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
 var CU=null,asmAns={},asmDone=false,votedSlots=new Set([3]);
 var caRole=null;
+
+// --- CHECK SESSION ON LOAD ---
+window.addEventListener('DOMContentLoaded', async function() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile(session.user);
+  }
+});
+
+async function loadUserProfile(user) {
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (profile) {
+    CU = {
+      id: user.id,
+      name: profile.full_name || user.email,
+      init: getInitials(profile.full_name || user.email),
+      role: profile.role === 'ministry' ? 'ministry leader' : profile.role === 'leader' ? 'group leader' : 'group member',
+      type: profile.role,
+      email: user.email
+    };
+    document.getElementById('s-login').classList.remove('active');
+    document.getElementById('s-app').classList.add('active');
+    document.getElementById('sb-name').textContent = CU.name;
+    document.getElementById('sb-role').textContent = CU.role;
+    document.getElementById('sb-av').textContent = CU.init;
+    document.getElementById('sb-role-lbl').textContent = CU.role;
+    buildNav();
+    nav('home');
+  }
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  var parts = name.trim().split(' ');
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+// --- REAL SIGN IN ---
+async function realSignIn() {
+  var email = document.getElementById('si-email').value.trim();
+  var pw = document.getElementById('si-pw').value;
+  if (!email || !pw) { toast('please enter your email and password 😊'); return; }
+  var btn = document.querySelector('#view-signin .btn-p');
+  btn.textContent = 'signing in...';
+  btn.disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) {
+    toast('sign in failed: ' + error.message + ' 😕');
+    btn.textContent = 'sign in';
+    btn.disabled = false;
+    return;
+  }
+  await loadUserProfile(data.user);
+}
 
 // --- CREATE ACCOUNT FLOW ---
 function showCreateAccount(){
@@ -407,22 +467,52 @@ function caBack2(){
   document.getElementById('view-ca3').style.display='none';
   document.getElementById('view-ca2').style.display='block';
 }
-function caFinish(){
-  var fn=document.getElementById('ca-fname')?document.getElementById('ca-fname').value.trim():'';
-  var ln=document.getElementById('ca-lname')?document.getElementById('ca-lname').value.trim():'';
-  // Build user from form
-  var newUser={name:fn+' '+ln,init:(fn[0]||'?')+(ln[0]||''),role:caRole==='ministry'?'ministry leader':caRole==='leader'?'group leader':'group member',type:caRole};
-  CU=newUser;
-  document.getElementById('view-ca3').style.display='none';
-  document.getElementById('s-login').classList.remove('active');
-  document.getElementById('s-app').classList.add('active');
-  document.getElementById('sb-name').textContent=CU.name;
-  document.getElementById('sb-role').textContent=CU.role;
-  document.getElementById('sb-av').textContent=CU.init;
-  document.getElementById('sb-role-lbl').textContent=CU.role;
-  buildNav();
-  nav('home');
-  toast('welcome to groupify, '+fn+'! 🎉');
+async function caFinish(){
+  var fn = document.getElementById('ca-fname') ? document.getElementById('ca-fname').value.trim() : '';
+  var ln = document.getElementById('ca-lname') ? document.getElementById('ca-lname').value.trim() : '';
+  var email = document.getElementById('ca-email') ? document.getElementById('ca-email').value.trim() : '';
+  var pw = document.getElementById('ca-pw') ? document.getElementById('ca-pw').value : '';
+  if (!fn || !ln) { toast('please enter your name 😊'); return; }
+
+  var btn = document.querySelector('#view-ca3 .btn-p');
+  btn.textContent = 'creating account...';
+  btn.disabled = true;
+
+  // Sign up with Supabase Auth
+  const { data, error } = await sb.auth.signUp({
+    email: email,
+    password: pw,
+    options: {
+      data: {
+        full_name: fn + ' ' + ln,
+        role: caRole
+      }
+    }
+  });
+
+  if (error) {
+    toast('signup failed: ' + error.message + ' 😕');
+    btn.textContent = 'create account 🎉';
+    btn.disabled = false;
+    return;
+  }
+
+  // If email confirmation is required, show message
+  if (data.user && !data.session) {
+    document.getElementById('view-ca3').innerHTML = '<div style="text-align:center;padding:20px 0">'
+      + '<div style="font-size:48px;margin-bottom:16px">📬</div>'
+      + '<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:12px">check your email!</div>'
+      + '<div style="font-size:14px;color:var(--muted);line-height:1.7">we sent a confirmation link to <strong>' + email + '</strong>. click it to activate your account, then come back and sign in.</div>'
+      + '<button class="btn btn-p btn-full" style="margin-top:24px" onclick="showSignIn()">go to sign in →</button>'
+      + '</div>';
+    return;
+  }
+
+  // Auto signed in (email confirmation disabled)
+  if (data.user && data.session) {
+    await loadUserProfile(data.user);
+    toast('welcome to groupify, ' + fn + '! 🎉');
+  }
 }
 
 var USERS={
@@ -585,10 +675,13 @@ function loginAs(t){
   nav('home');
 }
 
-function logout(){
+async function logout(){
+  await sb.auth.signOut();
   CU=null;
   document.getElementById('s-app').classList.remove('active');
   document.getElementById('s-login').classList.add('active');
+  document.getElementById('view-signin').style.display='block';
+  ['view-ca1','view-ca2','view-ca3'].forEach(function(id){document.getElementById(id).style.display='none'});
 }
 
 function buildNav(){
@@ -711,9 +804,33 @@ function rNextMtg(){
 }
 
 // --- PRAYERS ---
-function rPrayers(){
+async function rPrayers(){
   document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddPrayer()">+ add prayer</button>';
   var c=document.getElementById('pc');
+  c.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:32px">🙏</div><div style="margin-top:8px;font-size:14px">loading prayers...</div></div>';
+
+  // Load from Supabase if real user, else use demo data
+  if (CU && CU.id && CU.groupId) {
+    const { data, error } = await sb.from('prayers')
+      .select('*, prayer_interactions(count)')
+      .eq('group_id', CU.groupId)
+      .order('created_at', { ascending: false });
+    if (data) {
+      PRAYERS = data.map(function(p) {
+        return {
+          id: p.id,
+          au: p.profiles ? p.profiles.full_name : 'group member',
+          txt: p.text,
+          dt: new Date(p.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric'}),
+          ans: p.is_answered,
+          anote: p.answered_note,
+          cnt: p.prayer_interactions ? p.prayer_interactions[0].count : 0,
+          prayed: false
+        };
+      });
+    }
+  }
+
   c.innerHTML='<div class="g2" style="margin-bottom:18px">'
     +'<div class="sc"><div class="sc-em">🙏</div><div class="sc-v">'+PRAYERS.length+'</div><div class="sc-l">prayer requests</div></div>'
     +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">'+PRAYERS.filter(function(p){return p.ans}).length+'</div><div class="sc-l">answered prayers</div></div>'
@@ -1098,10 +1215,23 @@ function moAddPrayer(){
     +'<button class="btn btn-p btn-full" onclick="subPrayer()">post prayer request 🙏</button>');
 }
 
-function subPrayer(){
+async function subPrayer(){
   var t=document.getElementById('np').value;
   if(!t.trim()){toast('please write your prayer request 😊');return}
-  PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'today',ans:false,cnt:0,prayed:false});
+
+  if (CU && CU.id && CU.groupId) {
+    // Save to Supabase
+    const { error } = await sb.from('prayers').insert({
+      group_id: CU.groupId,
+      user_id: CU.id,
+      text: t,
+      category: document.querySelector('#modal-ct select') ? document.querySelector('#modal-ct select').value : 'general'
+    });
+    if (error) { toast('error saving prayer: ' + error.message); return; }
+  } else {
+    // Demo mode
+    PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'today',ans:false,cnt:0,prayed:false});
+  }
   closeMo();rPrayers();toast('prayer request posted 🙏');
 }
 
