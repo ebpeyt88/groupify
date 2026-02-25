@@ -361,6 +361,7 @@ window.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function loadUserProfile(user) {
+  DEMO_MODE = false;
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
   if (profile) {
     CU = {
@@ -663,7 +664,10 @@ var TITLES={
   milestones:'milestones & badges',members:'manage members',hdetail:'group health results'
 };
 
+var DEMO_MODE = false;
+
 function loginAs(t){
+  DEMO_MODE = true;
   CU=Object.assign({},USERS[t]);
   document.getElementById('s-login').classList.remove('active');
   document.getElementById('s-app').classList.add('active');
@@ -678,6 +682,7 @@ function loginAs(t){
 async function logout(){
   await sb.auth.signOut();
   CU=null;
+  DEMO_MODE=false;
   document.getElementById('s-app').classList.remove('active');
   document.getElementById('s-login').classList.add('active');
   document.getElementById('view-signin').style.display='block';
@@ -721,6 +726,17 @@ function render(pg){
 // --- MINISTRY HOME ---
 function rMinHome(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">⛪</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify!</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">your ministry dashboard will come to life as group leaders create groups and members start using the app. start by sharing groupify with your group leaders!</div>'
+      +'<div style="display:grid;gap:10px;max-width:320px;margin:0 auto">'
+      +'<button class="btn btn-p" onclick="nav(\'reminders\')">🔔 invite group leaders</button>'
+      +'<button class="btn btn-s" onclick="nav(\'resources\')">📚 add study resources</button>'
+      +'</div></div>';
+    return;
+  }
   c.innerHTML='<div class="g4" style="margin-bottom:18px">'
     +'<div class="sc"><div class="sc-em">⛪</div><div class="sc-v">5</div><div class="sc-l">active groups</div></div>'
     +'<div class="sc"><div class="sc-em">👥</div><div class="sc-v">41</div><div class="sc-l">total members</div></div>'
@@ -746,6 +762,23 @@ function rMinHome(){
 // --- MEMBER / LEADER HOME ---
 function rMemHome(){
   var c=document.getElementById('pc');
+
+  if (!DEMO_MODE && !CU.groupId) {
+    var isLeader = CU.type === 'leader';
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">'+(isLeader?'👥':'🙋')+'</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify, '+CU.name.split(' ')[0]+'!</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">'
+      +(isLeader
+        ? "you're all set up as a group leader. create your group to get started — you can add members, set your meeting schedule, track prayers, and more."
+        : "you're not in a group yet. ask your group leader for an invite code to join, or wait for them to add you.")
+      +'</div>'
+      +(isLeader
+        ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>'
+        : '<div style="background:var(--brand-p);border-radius:var(--rsm);padding:16px;font-size:14px;color:var(--brand);max-width:320px;margin:0 auto">ask your group leader to invite you through groupify and you\'ll appear here automatically 🙂</div>')
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="mhero"><div class="mh-lbl">📅 next meeting</div>'
     +'<div class="mh-title">'+GD.name+'</div>'
     +'<div class="mh-details">'
@@ -1064,6 +1097,14 @@ function rHDetail(){
 // --- MILESTONES ---
 function rMilestones(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE && !CU.groupId) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">🏆</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">your journey starts here!</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:380px;margin:0 auto">badges and milestones will appear as your group meets, prays, and grows together. every meeting counts! 🌱</div>'
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="g4" style="margin-bottom:22px">'
     +'<div class="sc"><div class="sc-em">📅</div><div class="sc-v">'+GD.stats.meetings+'</div><div class="sc-l">total meetings</div></div>'
     +'<div class="sc"><div class="sc-em">🎂</div><div class="sc-v">'+yrs()+'</div><div class="sc-l">years together</div></div>'
@@ -1164,6 +1205,15 @@ function rResources(){
 // --- MINISTRY GROUPS ---
 function rGroups(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">👥</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no groups yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:380px;margin:0 auto 24px">groups will appear here as group leaders sign up and create their groups. share groupify with your leaders to get started!</div>'
+      +'<button class="btn btn-p" onclick="nav(\'reminders\')">🔔 invite group leaders</button>'
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="g4" style="margin-bottom:22px">'
     +'<div class="sc"><div class="sc-em">👥</div><div class="sc-v">5</div><div class="sc-l">active groups</div></div>'
     +'<div class="sc"><div class="sc-em">🙋</div><div class="sc-v">41</div><div class="sc-l">total members</div></div>'
@@ -1190,6 +1240,14 @@ function rMinHealth(){
 // --- STATS ---
 function rStats(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">📊</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">stats are on their way!</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:380px;margin:0 auto">as your groups meet, pray, and grow together, all your ministry stats will show up here automatically.</div>'
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="g4" style="margin-bottom:22px">'
     +'<div class="sc"><div class="sc-em">⛪</div><div class="sc-v">5</div><div class="sc-l">groups</div><div class="sc-c">↑ 1 this quarter</div></div>'
     +'<div class="sc"><div class="sc-em">👥</div><div class="sc-v">41</div><div class="sc-l">total members</div><div class="sc-c">↑ 6 this quarter</div></div>'
@@ -1207,6 +1265,37 @@ function rStats(){
 // --- MODALS ---
 function openMo(html){document.getElementById('modal-ct').innerHTML=html;document.getElementById('modal-ov').classList.add('open')}
 function closeMo(e){if(!e||e.target===document.getElementById('modal-ov'))document.getElementById('modal-ov').classList.remove('open')}
+
+function moCreateGroup(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>👥 create your group</h2>'
+    +'<div class="fg"><label>group name</label><input type="text" id="cg-name" placeholder="e.g. Thursday Night Crew"></div>'
+    +'<div class="fg"><label>when did your group start?</label><input type="date" id="cg-start" value="'+new Date().toISOString().split('T')[0]+'"></div>'
+    +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, enter the real start date — you\'ll instantly earn your milestone badges!</div>'
+    +'<div class="fg"><label>meeting day</label><select id="cg-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
+    +'<div class="fg"><label>meeting time</label><select id="cg-time"><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option></select></div>'
+    +'<button class="btn btn-p btn-full" onclick="saveNewGroup()">create group 🎉</button>');
+}
+
+async function saveNewGroup(){
+  var name = document.getElementById('cg-name').value.trim();
+  if (!name) { toast('please enter a group name 😊'); return; }
+  var start = document.getElementById('cg-start').value;
+  var day = document.getElementById('cg-day').value;
+  var time = document.getElementById('cg-time').value;
+  if (CU.id) {
+    const { data, error } = await sb.from('groups').insert({
+      name: name, start_date: start, meeting_day: day,
+      meeting_time: time, created_by: CU.id
+    }).select().single();
+    if (error) { toast('error creating group: ' + error.message); return; }
+    await sb.from('group_members').insert({ group_id: data.id, user_id: CU.id, role: 'leader' });
+    CU.groupId = data.id;
+    GD.name = name; GD.start = start; GD.next.day = day; GD.next.time = time;
+  } else {
+    GD.name = name;
+  }
+  closeMo(); nav('home'); toast('group created! 🎉');
+}
 
 function moAddPrayer(){
   openMo('<button class="mc" onclick="closeMo()">✕</button><h2>🙏 add a prayer request</h2>'
