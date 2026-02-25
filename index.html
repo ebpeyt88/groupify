@@ -771,47 +771,70 @@ function rMemHome(){
       +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">'
       +(isLeader
         ? "you're all set up as a group leader. create your group to get started — you can add members, set your meeting schedule, track prayers, and more."
-        : "you're not in a group yet. ask your group leader for an invite code to join, or wait for them to add you.")
+        : "you're not in a group yet. ask your group leader for their invite code, then use it to join.")
       +'</div>'
       +(isLeader
         ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>'
-        : '<div style="background:var(--brand-p);border-radius:var(--rsm);padding:16px;font-size:14px;color:var(--brand);max-width:320px;margin:0 auto">ask your group leader to invite you through groupify and you\'ll appear here automatically 🙂</div>')
+        : '<div style="background:var(--brand-p);border-radius:var(--rsm);padding:16px;font-size:14px;color:var(--brand);max-width:320px;margin:0 auto 16px auto">your leader will share a group invite code — enter it when signing up, or ask them to send you a direct invite 🙂</div>')
       +'</div>';
     return;
   }
+
+  // Real user with group, or demo mode
+  var prayers = DEMO_MODE ? PRAYERS : [];
+  var stats = DEMO_MODE ? GD.stats : {meetings:0,answered:0,books:0};
+  var groupName = GD.name || 'your group';
+
   c.innerHTML='<div class="mhero"><div class="mh-lbl">📅 next meeting</div>'
-    +'<div class="mh-title">'+GD.name+'</div>'
+    +'<div class="mh-title">'+groupName+'</div>'
     +'<div class="mh-details">'
-    +'<div class="mh-d">🗓️ '+GD.next.day+'</div>'
-    +'<div class="mh-d">⏰ '+GD.next.time+'</div>'
-    +'<div class="mh-d">📍 '+GD.next.loc+'</div>'
-    +'</div></div>'
+    +(GD.next.day ? '<div class="mh-d">🗓️ '+GD.next.day+'</div>' : '<div class="mh-d" style="opacity:.7">no meeting scheduled yet</div>')
+    +(GD.next.time ? '<div class="mh-d">⏰ '+GD.next.time+'</div>' : '')
+    +(GD.next.loc ? '<div class="mh-d">📍 '+GD.next.loc+'</div>' : '')
+    +'</div>'
+    +(CU.type==='leader'?'<button class="btn btn-a" style="margin-top:16px" onclick="moEditMtg()">edit meeting details</button>':'')
+    +'</div>'
     +'<div class="g2">'
     +'<div>'
     +'<div class="icard"><div class="ilbl">💬 this week\'s icebreaker</div>'
-    +'<div class="iq">"'+IQ[2]+'"</div>'
+    +'<div class="iq">"'+IQ[Math.floor(Date.now()/(7*24*3600*1000))%IQ.length]+'"</div>'
     +'<div class="itip">kick off your meeting with this question 🌟</div></div>'
     +'<div class="card"><div class="ch"><span class="ct">📖 current study</span></div>'
-    +'<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:7px">'+GD.study+'</div>'
-    +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6"><strong>homework:</strong> '+GD.hw+'</div>'
+    +(GD.study
+      ? '<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:7px">'+GD.study+'</div>'
+        +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6"><strong>homework:</strong> '+GD.hw+'</div>'
+      : '<div style="font-size:14px;color:var(--muted);padding:8px 0">no study set yet.</div>')
     +(CU.type==='leader'?'<button class="btn btn-s btn-sm" onclick="moEditStudy()">edit study info</button>':'')
     +'</div></div>'
     +'<div>'
     +'<div class="card"><div class="ch"><span class="ct">🙏 recent prayers</span><button class="btn btn-g btn-sm" onclick="nav(\'prayers\')">see all →</button></div>'
-    +PRAYERS.slice(0,2).map(function(p){return '<div class="pi'+(p.ans?' ans':'')+'"><div class="pmeta"><span class="pau">'+p.au+'</span><span class="pdt">'+p.dt+'</span></div><div class="ptxt">'+p.txt.substring(0,80)+(p.txt.length>80?'...':'')+'</div><div class="pacts"><button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button><span class="pc2">'+p.cnt+' praying</span>'+(p.ans?'<span class="badge b-g">✨ answered!</span>':'')+'</div></div>'}).join('')
+    +(prayers.length===0
+      ? '<div style="font-size:14px;color:var(--muted);padding:12px 0;text-align:center">no prayers yet — be the first to share one 🙏</div>'
+      : prayers.slice(0,2).map(function(p){return '<div class="pi'+(p.ans?' ans':'')+'"><div class="pmeta"><span class="pau">'+p.au+'</span><span class="pdt">'+p.dt+'</span></div><div class="ptxt">'+p.txt.substring(0,80)+(p.txt.length>80?'...':'')+'</div><div class="pacts"><button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button><span class="pc2">'+p.cnt+' praying</span>'+(p.ans?'<span class="badge b-g">✨ answered!</span>':'')+'</div></div>'}).join(''))
     +'</div>'
     +'<div class="card"><div class="ch"><span class="ct">🏆 group stats</span><button class="btn btn-g btn-sm" onclick="nav(\'milestones\')">see all →</button></div>'
     +'<div class="g2" style="gap:11px">'
-    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+GD.stats.meetings+'</div><div style="font-size:12px;color:var(--muted)">meetings</div></div>'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+stats.meetings+'</div><div style="font-size:12px;color:var(--muted)">meetings</div></div>'
     +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+yrs()+'</div><div style="font-size:12px;color:var(--muted)">years together</div></div>'
-    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+GD.stats.answered+'</div><div style="font-size:12px;color:var(--muted)">answered prayers ✨</div></div>'
-    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+GD.stats.books+'</div><div style="font-size:12px;color:var(--muted)">books studied 📖</div></div>'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+stats.answered+'</div><div style="font-size:12px;color:var(--muted)">answered prayers ✨</div></div>'
+    +'<div style="text-align:center;padding:13px;background:var(--bg);border-radius:10px"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+stats.books+'</div><div style="font-size:12px;color:var(--muted)">books studied 📖</div></div>'
     +'</div></div></div></div>';
 }
 
 // --- NEXT MEETING ---
 function rNextMtg(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE && !CU.groupId) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">📅</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no meeting scheduled yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto 24px">'
+      +(CU.type==='leader' ? 'create your group first, then set your meeting details here.' : 'your group leader hasn\'t set a meeting time yet — check back soon!')
+      +'</div>'
+      +(CU.type==='leader' ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>' : '')
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="mhero" style="margin-bottom:22px"><div class="mh-lbl">📅 coming up</div>'
     +'<div class="mh-title">'+GD.next.day+'</div>'
     +'<div class="mh-details">'
@@ -929,9 +952,11 @@ function rIcebreaker(){
 function rSchedule(){
   var c=document.getElementById('pc');
   var isLeader=(CU.type==='leader'||CU.type==='ministry');
+  var schedData = DEMO_MODE ? SCHED : [];
+  var myVotes = DEMO_MODE ? votedSlots : new Set();
   // Build the poll options section
   var pollHtml='';
-  if(SCHED.length===0){
+  if(schedData.length===0){
     pollHtml='<div style="text-align:center;padding:32px;color:var(--muted)">'
       +'<div style="font-size:36px;margin-bottom:10px">🗓️</div>'
       +'<div style="font-size:14px">no time options yet.</div>'
@@ -939,8 +964,8 @@ function rSchedule(){
       +'</div>';
   } else {
     pollHtml='<div class="tsg">'
-      +SCHED.map(function(s,i){
-        return '<div class="ts'+(votedSlots.has(i)?' voted':'')+(s.votes>=5?' top':'')+'" onclick="togVote('+i+',this)">'
+      +schedData.map(function(s,i){
+        return '<div class="ts'+(myVotes.has(i)?' voted':'')+(s.votes>=5?' top':'')+'" onclick="togVote('+i+',this)">'
           +'<div class="tsday">'+s.day+'</div>'
           +'<div>'+s.time+'</div>'
           +'<div class="tsvotes" id="tv-'+i+'">'+s.votes+' vote'+(s.votes!==1?'s':'')+'</div>'
@@ -1125,18 +1150,30 @@ function rMilestones(){
 // --- ATTENDANCE ---
 function rAttendance(){
   var c=document.getElementById('pc');
+  if (!DEMO_MODE && !CU.groupId) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">✅</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no meetings yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto">once your group starts meeting, you\'ll mark attendance here after each meeting.</div>'
+      +'</div>';
+    return;
+  }
+  var members = DEMO_MODE ? GD.members : [];
+  var mtgLabel = DEMO_MODE ? "Thursday, Feb 22 · 7:00 PM · Marcus & Jenna's" : (GD.next.day+' · '+GD.next.time+' · '+GD.next.loc);
   c.innerHTML='<div class="card" style="margin-bottom:18px">'
-    +'<div class="ch"><div><div class="ct">📋 mark attendance</div><div class="csub">Thursday, Feb 22 · 7:00 PM · Marcus & Jenna\'s</div></div>'
+    +'<div class="ch"><div><div class="ct">📋 mark attendance</div><div class="csub">'+mtgLabel+'</div></div>'
     +'<button class="btn btn-p btn-sm" onclick="toast(\'attendance saved ✅\')">save attendance</button></div>'
-    +GD.members.map(function(m,i){return '<div class="mr"><div class="mav">'+m.i+'</div><div style="flex:1"><div class="mname">'+m.n+'</div><div class="mrole">'+m.r+'</div></div><div style="display:flex;gap:7px"><button class="atbtn'+(m.p===true?' present':'')+'" onclick="setAtt(this,\'p\')">✓ present</button><button class="atbtn'+(m.p===false?' absent':'')+'" onclick="setAtt(this,\'a\')">✗ absent</button></div></div>'}).join('')
+    +(members.length===0
+      ? '<div style="text-align:center;padding:28px;color:var(--muted);font-size:14px">add members to your group first to mark attendance.</div>'
+      : members.map(function(m,i){return '<div class="mr"><div class="mav">'+m.i+'</div><div style="flex:1"><div class="mname">'+m.n+'</div><div class="mrole">'+m.r+'</div></div><div style="display:flex;gap:7px"><button class="atbtn'+(m.p===true?' present':'')+'" onclick="setAtt(this,\'p\')">✓ present</button><button class="atbtn'+(m.p===false?' absent':'')+'" onclick="setAtt(this,\'a\')">✗ absent</button></div></div>'}).join(''))
     +'</div>'
-    +'<div class="card"><div class="ch"><span class="ct">📊 attendance trends</span></div>'
-    +'<div class="g4">'
-    +'<div class="sc"><div class="sc-v">78%</div><div class="sc-l">avg attendance</div></div>'
-    +'<div class="sc"><div class="sc-v">5/7</div><div class="sc-l">last meeting</div></div>'
-    +'<div class="sc"><div class="sc-v">7</div><div class="sc-l">current streak 🔥</div></div>'
-    +'<div class="sc"><div class="sc-v">127</div><div class="sc-l">total meetings</div></div>'
-    +'</div></div>';
+    +(DEMO_MODE ? '<div class="card"><div class="ch"><span class="ct">📊 attendance trends</span></div>'
+      +'<div class="g4">'
+      +'<div class="sc"><div class="sc-v">78%</div><div class="sc-l">avg attendance</div></div>'
+      +'<div class="sc"><div class="sc-v">5/7</div><div class="sc-l">last meeting</div></div>'
+      +'<div class="sc"><div class="sc-v">7</div><div class="sc-l">current streak 🔥</div></div>'
+      +'<div class="sc"><div class="sc-v">127</div><div class="sc-l">total meetings</div></div>'
+      +'</div></div>' : '');
 }
 
 function setAtt(btn,v){
@@ -1148,44 +1185,162 @@ function setAtt(btn,v){
 // --- ROTATION ---
 function rRotation(){
   var c=document.getElementById('pc');
+  var rotation = DEMO_MODE ? ROTATION : [];
+  if (!DEMO_MODE && rotation.length === 0) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">🏡</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no hosts added yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto 24px">add the homes in your rotation so everyone knows who\'s hosting next.</div>'
+      +'<button class="btn btn-p" onclick="moAddHost()">+ add first host</button>'
+      +'</div>';
+    return;
+  }
   c.innerHTML='<div class="card">'
     +'<div class="ch"><span class="ct">🏡 location rotation</span><button class="btn btn-s btn-sm" onclick="toast(\'rotation updated 🏡\')">edit order</button></div>'
     +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">track whose home is next so nobody has to guess. the next host is highlighted automatically.</div>'
-    +ROTATION.map(function(loc,i){return '<div class="rotitem'+(i===0?' nx':'')+'"><div class="rotord">'+(i===0?'📍':(i+1))+'</div><div style="flex:1"><div style="font-size:14px;font-weight:600">'+loc.n+'</div><div style="font-size:12px;color:var(--muted)">'+loc.a+'</div>'+(i===0?'<div style="font-size:12px;color:var(--brand);font-weight:600;margin-top:3px">hosting next meeting!</div>':'')+'</div>'+(i===0?'<span class="badge b-g">next up</span>':'')+'</div>'}).join('')
+    +rotation.map(function(loc,i){return '<div class="rotitem'+(i===0?' nx':'')+'"><div class="rotord">'+(i===0?'📍':(i+1))+'</div><div style="flex:1"><div style="font-size:14px;font-weight:600">'+loc.n+'</div><div style="font-size:12px;color:var(--muted)">'+loc.a+'</div>'+(i===0?'<div style="font-size:12px;color:var(--brand);font-weight:600;margin-top:3px">hosting next meeting!</div>':'')+'</div>'+(i===0?'<span class="badge b-g">next up</span>':'')+'</div>'}).join('')
     +'<button class="btn btn-s" style="margin-top:14px" onclick="moAddHost()">+ add host</button>'
     +'</div>';
 }
 
 // --- MEMBERS ---
 function rMembers(){
-  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="toast(\'invite link copied! 📋\')">+ invite member</button>';
   var c=document.getElementById('pc');
-  c.innerHTML='<div class="card">'
-    +'<div class="ch"><span class="ct">👥 group members ('+GD.members.length+')</span></div>'
-    +GD.members.map(function(m){return '<div class="mr"><div class="mav">'+m.i+'</div><div style="flex:1"><div class="mname">'+m.n+'</div><div class="mrole">'+m.r+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge '+(m.r.includes('leader')?'b-g':'b-b')+'">'+m.r+'</span><button class="btn btn-g btn-sm" onclick="moEditRole(\''+m.n+'\')">edit role</button></div></div>'}).join('')
+  var members = DEMO_MODE ? GD.members : [];
+
+  // Generate group invite code from group name (simple hash)
+  var groupCode = DEMO_MODE ? 'GRP-THURS' : (CU.groupId ? 'GRP-'+CU.groupId.substring(0,6).toUpperCase() : 'GRP-??????');
+
+  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moInviteMember()">+ invite member</button>';
+
+  if (!DEMO_MODE && members.length === 0) {
+    c.innerHTML='<div class="card" style="margin-bottom:18px;background:var(--brand-p);border-color:var(--brand-l)">'
+      +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 your group invite code</span></div>'
+      +'<div style="font-size:28px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:8px">'+groupCode+'</div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with people you want to join your group. they\'ll enter it when creating their group member account.</div>'
+      +'<button class="btn btn-p btn-sm" onclick="toast(\'invite code copied! 📋\')">copy code</button>'
+      +'</div>'
+      +'<div class="card" style="text-align:center;padding:36px 24px">'
+      +'<div style="font-size:40px;margin-bottom:12px">👥</div>'
+      +'<div style="font-size:16px;font-weight:600;color:var(--dark);margin-bottom:8px">no members yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:340px;margin:0 auto">share your invite code above or send a direct invite below — members will show up here once they join.</div>'
+      +'<button class="btn btn-p" style="margin-top:18px" onclick="moInviteMember()">📧 send an invite</button>'
+      +'</div>';
+    return;
+  }
+
+  c.innerHTML='<div class="card" style="margin-bottom:18px;background:var(--brand-p);border-color:var(--brand-l)">'
+    +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 your group invite code</span></div>'
+    +'<div style="font-size:28px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:8px">'+groupCode+'</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px">share this with anyone you want to join your group.</div>'
+    +'<button class="btn btn-p btn-sm" onclick="toast(\'invite code copied! 📋\')">copy code</button>'
+    +'</div>'
+    +'<div class="card">'
+    +'<div class="ch"><span class="ct">👥 group members ('+members.length+')</span></div>'
+    +members.map(function(m){return '<div class="mr"><div class="mav">'+m.i+'</div><div style="flex:1"><div class="mname">'+m.n+'</div><div class="mrole">'+m.r+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge '+(m.r.includes('leader')?'b-g':'b-b')+'">'+m.r+'</span><button class="btn btn-g btn-sm" onclick="moEditRole(\''+m.n+'\')">edit role</button></div></div>'}).join('')
     +'</div>';
+}
+
+function moInviteMember(){
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>📧 invite someone</h2>'
+    +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">send them your invite code to enter when signing up, or enter their email to send a direct invite link.</div>'
+    +'<div class="fg"><label>their email address</label><input type="email" id="inv-email" placeholder="friend@email.com"></div>'
+    +'<div class="fg"><label>personal note (optional)</label><textarea rows="2" placeholder="hey! i\'d love for you to join our group..."></textarea></div>'
+    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'invite sent! 📬\')">send invite</button>');
 }
 
 // --- REMINDERS ---
 function rReminders(){
   var c=document.getElementById('pc');
-  c.innerHTML='<div class="card">'
+  var isMinistry = CU.type==='ministry';
+  var isLeader = CU.type==='leader';
+
+  // Manual send section — different options per role
+  var sendToOptions = isMinistry
+    ? '<option>all groups in ministry</option><option>all group leaders</option><option>specific group leader</option><option>specific group (leaders + members)</option>'
+    : '<option>all group members</option><option>co-leaders only</option><option>a specific member</option>';
+
+  var reminderTypes = isMinistry
+    ? '<option>upcoming meeting reminder</option><option>fill out group health assessment</option><option>mark attendance</option><option>custom message</option>'
+    : '<option>upcoming meeting reminder</option><option>fill out group health assessment</option><option>mark attendance</option><option>custom message</option>';
+
+  // Recipient selector — shows name field when "specific" is chosen
+  var specificField = isMinistry
+    ? '<div class="fg" id="specific-field" style="display:none"><label>group leader name or email</label><input type="text" placeholder="search by name or email..."></div>'
+    : '<div class="fg" id="specific-field" style="display:none"><label>member name</label><input type="text" placeholder="search by name..."></div>';
+
+  // Auto reminder settings
+  var autoSettings = '';
+  if (!isMinistry && !isLeader) {
+    // Members see nothing
+    autoSettings = '';
+  } else {
+    autoSettings = '<div class="card"><div class="ch"><span class="ct">⚙️ automatic reminder settings</span></div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">'
+      +(isMinistry
+        ? 'these settings become the default for all group leaders in your ministry. leaders can adjust their own settings individually.'
+        : 'these are your group\'s reminder settings. they default to what your ministry leader has set, but you can adjust them here.')
+      +'</div>'
+
+      // Meeting reminder
+      +'<div style="padding:16px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:4px">📅 meeting reminder</div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">sent to all group members before each meeting</div>'
+      +'<div class="fg" style="margin-bottom:0"><label>send reminder</label>'
+      +'<select onchange="toast(\'setting saved ✅\')">'
+      +'<option>2 hours before</option><option selected>24 hours before</option><option>48 hours before</option><option>don\'t send</option>'
+      +'</select></div></div>'
+
+      // Attendance reminder
+      +'<div style="padding:16px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:4px">✅ attendance reminder</div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">sent to group leader to mark attendance after each meeting</div>'
+      +'<div class="fg" style="margin-bottom:0"><label>send reminder</label>'
+      +'<select onchange="toast(\'setting saved ✅\')">'
+      +'<option>at end of meeting</option><option selected>1 hour after meeting ends</option><option>2 hours after meeting ends</option><option>1 day after meeting ends</option><option>don\'t send</option>'
+      +'</select></div></div>'
+
+      // Health assessment
+      +'<div style="padding:16px 0">'
+      +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:4px">💚 group health assessment</div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">sent to all group members on a recurring schedule</div>'
+      +'<div class="fg" style="margin-bottom:0"><label>send assessment every</label>'
+      +'<select onchange="toast(\'setting saved ✅\')">'
+      +'<option>every month</option><option>every other month</option><option selected>every 3 months</option><option>every 6 months</option><option>every year</option>'
+      +'</select></div></div>'
+
+      +'</div>';
+  }
+
+  // Ministry leader invite section at top
+  var inviteSection = isMinistry
+    ? '<div class="card" style="margin-bottom:18px;background:var(--brand-p);border-color:var(--brand-l)">'
+      +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 your ministry invite code</span></div>'
+      +'<div style="font-size:28px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:8px">MIN-'+(DEMO_MODE?'DEMO88':'CHURCH1')+'</div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with group leaders when they sign up — it connects them to your ministry automatically. group members use the group leader\'s separate invite code.</div>'
+      +'<button class="btn btn-p btn-sm" onclick="toast(\'ministry code copied! 📋\')">copy code</button>'
+      +'</div>'
+    : '';
+
+  c.innerHTML = inviteSection
+    +'<div class="card" style="margin-bottom:18px">'
     +'<div class="ch"><span class="ct">🔔 send a reminder</span></div>'
-    +'<div class="fg"><label>send to</label><select><option>all group members</option><option>group leaders only</option>'
-    +(CU.type==='ministry'?'<option>all groups in ministry</option><option>specific group leader</option>':'')
-    +'</select></div>'
-    +'<div class="fg"><label>reminder type</label><select><option>upcoming meeting reminder</option><option>fill out group health assessment</option><option>study recommendation survey</option><option>mark attendance</option><option>custom message</option></select></div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">reminders are sent as emails to the recipients. 📧</div>'
+    +'<div class="fg"><label>send to</label>'
+    +'<select onchange="toggleSpecific(this)">'+sendToOptions+'</select></div>'
+    +specificField
+    +'<div class="fg"><label>reminder type</label><select>'+reminderTypes+'</select></div>'
     +'<div class="fg"><label>message (optional)</label><textarea rows="3" placeholder="add a personal note..."></textarea></div>'
     +'<button class="btn btn-p" onclick="toast(\'reminder sent! 📬\')">send reminder</button>'
     +'</div>'
-    +'<div class="card"><div class="ch"><span class="ct">⚙️ automatic reminders</span></div>'
-    +[
-      {l:'meeting reminder',d:'sent 24 hours before each meeting',on:true},
-      {l:'attendance reminder',d:'sent after each meeting to leader',on:true},
-      {l:'group health assessment',d:'sent quarterly to all members',on:true},
-      {l:'study survey',d:'sent when leader requests it',on:false}
-    ].map(function(r){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px;font-weight:600">'+r.l+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">'+r.d+'</div></div><input type="checkbox"'+(r.on?' checked':'')+'style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand)" onchange="toast(\'preference saved ✅\')"></div>'}).join('')
-    +'</div>';
+    +autoSettings;
+}
+
+function toggleSpecific(sel){
+  var field = document.getElementById('specific-field');
+  if (!field) return;
+  var val = sel.value;
+  field.style.display = (val.includes('specific') || val.includes('a specific')) ? 'block' : 'none';
 }
 
 var BIBLE_BOOKS=[
