@@ -680,18 +680,26 @@ var AQ=[
 
 var NAV={
   ministry:[
+    {id:'__header__',ic:'',lb:'my ministry'},
     {id:'home',ic:'🏠',lb:'dashboard'},
     {id:'groups',ic:'👥',lb:'all groups'},
     {id:'hresults',ic:'💚',lb:'group health'},
-    {id:'resources',ic:'📚',lb:'resources'},
+    {id:'min-resources',ic:'📚',lb:'resources'},
     {id:'reminders',ic:'🔔',lb:'send reminders'},
     {id:'stats',ic:'📊',lb:'ministry stats'},
     {id:'__divider__',ic:'',lb:'my group'},
+    {id:'home-g',ic:'🏠',lb:'group home'},
     {id:'nextmtg',ic:'📅',lb:'next meeting'},
     {id:'attendance',ic:'✅',lb:'attendance'},
     {id:'prayers',ic:'🙏',lb:'prayer wall'},
+    {id:'icebreaker',ic:'💬',lb:'icebreaker'},
     {id:'schedule',ic:'🗓️',lb:'scheduling'},
-    {id:'milestones',ic:'🏆',lb:'milestones'}
+    {id:'rotation',ic:'🏡',lb:'location rotation'},
+    {id:'assessment',ic:'💚',lb:'group health'},
+    {id:'milestones',ic:'🏆',lb:'milestones'},
+    {id:'resources',ic:'📚',lb:'study resources'},
+    {id:'members',ic:'👤',lb:'manage members'},
+    {id:'reminders-g',ic:'🔔',lb:'group reminders'}
   ],
   leader:[
     {id:'home',ic:'🏠',lb:'home'},
@@ -717,14 +725,6 @@ var NAV={
     {id:'milestones',ic:'🏆',lb:'milestones'},
     {id:'resources',ic:'📚',lb:'resources'}
   ]
-};
-
-var TITLES={
-  home:'home',groups:'all groups',hresults:'group health overview',resources:'resources',
-  reminders:'send reminders',stats:'ministry stats',nextmtg:'next meeting',
-  attendance:'attendance',prayers:'prayer wall',icebreaker:'icebreaker & connection',
-  schedule:'scheduling poll',rotation:'location rotation',assessment:'group health check-in',
-  milestones:'milestones & badges',members:'manage members',hdetail:'group health results'
 };
 
 var DEMO_MODE = false;
@@ -756,6 +756,10 @@ function buildNav(){
   var html='';
   var items = NAV[CU.type] || NAV.member;
   items.forEach(function(item){
+    if(item.id==='__header__'){
+      html+='<div style="padding:14px 22px 4px"><div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.5px;text-transform:uppercase">'+item.lb+'</div></div>';
+      return;
+    }
     if(item.id==='__divider__'){
       html+='<div style="border-top:1px solid rgba(255,255,255,.1);margin:8px 0;padding:8px 22px 2px">'
         +'<div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.5px;text-transform:uppercase">'+item.lb+'</div></div>';
@@ -771,6 +775,22 @@ function nav(pg){
   document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active')});
   var nel=document.getElementById('ni-'+pg);
   if(nel)nel.classList.add('active');
+  // Route ministry-specific aliases
+  var realPg = pg;
+  if(pg==='home-g') realPg='home-group';
+  if(pg==='reminders-g') realPg='reminders-group';
+  if(pg==='min-resources') realPg='min-resources';
+  document.getElementById('pg-title').textContent=TITLES[pg]||TITLES[realPg]||pg;
+  document.getElementById('topbar-acts').innerHTML='';
+  document.getElementById('pc').innerHTML='';
+  var fn=PAGES[realPg]||PAGES[pg];
+  if(fn) fn();
+}
+
+function nav(pg){
+  document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active')});
+  var nel=document.getElementById('ni-'+pg);
+  if(nel)nel.classList.add('active');
   document.getElementById('pg-title').textContent=TITLES[pg]||pg;
   document.getElementById('topbar-acts').innerHTML='';
   render(pg);
@@ -778,19 +798,38 @@ function nav(pg){
 
 function yrs(){return Math.floor((Date.now()-new Date(GD.start))/(365.25*24*3600*1000))}
 
-function render(pg){
-  var c=document.getElementById('pc');
-  c.innerHTML='';
-  var fn={
-    home:function(){CU.type==='ministry'?rMinHome():rMemHome()},
-    groups:rGroups,hresults:rMinHealth,resources:rResources,reminders:rReminders,stats:rStats,
-    nextmtg:rNextMtg,attendance:rAttendance,prayers:rPrayers,icebreaker:rIcebreaker,
-    schedule:rSchedule,rotation:rRotation,
-    assessment:function(){asmDone?rHDetail():rAssessment()},
-    milestones:rMilestones,members:rMembers,hdetail:rHDetail
-  };
-  if(fn[pg])fn[pg]();
-}
+var PAGES={
+  home:function(){CU.type==='ministry'?rMinHome():rMemHome()},
+  'home-group':rMemHome,
+  groups:rGroups,
+  hresults:rMinHealth,
+  resources:rResources,
+  'min-resources':rMinResources,
+  reminders:rReminders,
+  'reminders-group':rReminders,
+  stats:rStats,
+  nextmtg:rNextMtg,
+  attendance:rAttendance,
+  prayers:rPrayers,
+  icebreaker:rIcebreaker,
+  schedule:rSchedule,
+  rotation:rRotation,
+  assessment:function(){asmDone?rHDetail():rAssessment()},
+  milestones:rMilestones,
+  members:rMembers,
+  hdetail:rHDetail
+};
+
+var TITLES={
+  home:'home',groups:'all groups',hresults:'group health overview',
+  resources:'study resources','min-resources':'ministry resources',
+  reminders:'send reminders','reminders-g':'group reminders',
+  stats:'ministry stats',nextmtg:'next meeting',
+  attendance:'attendance',prayers:'prayer wall',icebreaker:'icebreaker & connection',
+  schedule:'scheduling poll',rotation:'location rotation',assessment:'group health check-in',
+  milestones:'milestones & badges',members:'manage members',hdetail:'group health results',
+  'home-g':'group home','home-group':'group home'
+};
 
 // --- MINISTRY HOME ---
 function rMinHome(){
@@ -932,16 +971,30 @@ function rNextMtg(){
 async function rPrayers(){
   document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddPrayer()">+ add prayer</button>';
   var c=document.getElementById('pc');
+
+  // Real user with no group yet
+  if (!DEMO_MODE && !CU.groupId) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">🙏</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:22px;color:var(--dark);margin-bottom:10px">no prayer requests yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto 20px">once your group is set up, members can share prayer requests here and pray for one another throughout the week.</div>'
+      +'<button class="btn btn-p btn-sm" onclick="moAddPrayer()">+ add first prayer request</button>'
+      +'</div>';
+    return;
+  }
+
+  var displayPrayers = DEMO_MODE ? PRAYERS : [];
+
   c.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:32px">🙏</div><div style="margin-top:8px;font-size:14px">loading prayers...</div></div>';
 
-  // Load from Supabase if real user, else use demo data
-  if (CU && CU.id && CU.groupId) {
-    const { data, error } = await sb.from('prayers')
+  // Load from Supabase if real user with group
+  if (!DEMO_MODE && CU.id && CU.groupId) {
+    var result = await sb.from('prayers')
       .select('*, prayer_interactions(count)')
       .eq('group_id', CU.groupId)
       .order('created_at', { ascending: false });
-    if (data) {
-      PRAYERS = data.map(function(p) {
+    if (result.data) {
+      displayPrayers = result.data.map(function(p) {
         return {
           id: p.id,
           au: p.profiles ? p.profiles.full_name : 'group member',
@@ -956,16 +1009,26 @@ async function rPrayers(){
     }
   }
 
+  if (displayPrayers.length === 0 && !DEMO_MODE) {
+    c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">🙏</div>'
+      +'<div style="font-size:16px;font-weight:600;color:var(--dark);margin-bottom:8px">no prayer requests yet</div>'
+      +'<div style="font-size:14px;color:var(--muted);margin-bottom:20px">be the first to share something with your group!</div>'
+      +'<button class="btn btn-p btn-sm" onclick="moAddPrayer()">+ add prayer request</button>'
+      +'</div>';
+    return;
+  }
+
   c.innerHTML='<div class="g2" style="margin-bottom:18px">'
-    +'<div class="sc"><div class="sc-em">🙏</div><div class="sc-v">'+PRAYERS.length+'</div><div class="sc-l">prayer requests</div></div>'
-    +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">'+PRAYERS.filter(function(p){return p.ans}).length+'</div><div class="sc-l">answered prayers</div></div>'
+    +'<div class="sc"><div class="sc-em">🙏</div><div class="sc-v">'+displayPrayers.length+'</div><div class="sc-l">prayer requests</div></div>'
+    +'<div class="sc"><div class="sc-em">✨</div><div class="sc-v">'+displayPrayers.filter(function(p){return p.ans}).length+'</div><div class="sc-l">answered prayers</div></div>'
     +'</div>'
     +'<div class="tabs">'
-    +'<div class="tab active" onclick="filterP(\'all\',this)">all ('+PRAYERS.length+')</div>'
-    +'<div class="tab" onclick="filterP(\'active\',this)">active ('+PRAYERS.filter(function(p){return !p.ans}).length+')</div>'
-    +'<div class="tab" onclick="filterP(\'ans\',this)">answered ('+PRAYERS.filter(function(p){return p.ans}).length+')</div>'
+    +'<div class="tab active" onclick="filterP(\'all\',this)">all ('+displayPrayers.length+')</div>'
+    +'<div class="tab" onclick="filterP(\'active\',this)">active ('+displayPrayers.filter(function(p){return !p.ans}).length+')</div>'
+    +'<div class="tab" onclick="filterP(\'ans\',this)">answered ('+displayPrayers.filter(function(p){return p.ans}).length+')</div>'
     +'</div>'
-    +'<div id="plist">'+prayerListHtml(PRAYERS)+'</div>';
+    +'<div id="plist">'+prayerListHtml(displayPrayers)+'</div>';
 }
 
 function prayerListHtml(list){
@@ -1492,7 +1555,29 @@ var BIBLE_BOOKS=[
   {type:'New Testament',title:'Revelation',desc:'The ultimate victory of Christ over evil - hope for the suffering church.',tags:['hope','victory','worship']}
 ];
 
-// --- RESOURCES ---
+// --- MINISTRY RESOURCES (add/manage only, no recommendation quiz) ---
+function rMinResources(){
+  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddRes()">+ add resource</button>';
+  var c=document.getElementById('pc');
+  var customResources = DEMO_MODE ? RESOURCES : [];
+  c.innerHTML='<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">add study resources that will be available to all group leaders in your ministry. leaders can then use these when selecting what their group studies next.</div>'
+    +(customResources.length > 0
+      ? '<div style="display:grid;gap:14px">'
+        +customResources.map(function(r){
+          return '<div class="rc"><div class="rt">'+r.type+'</div><div class="rttl">'+r.title+'</div><div class="rdsc">'+r.desc+'</div>'
+            +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
+            +'<button class="btn btn-g btn-sm" style="margin-top:11px" onclick="toast(\'resource removed\')">remove</button>'
+            +'</div>';
+        }).join('')+'</div>'
+      : '<div class="card" style="text-align:center;padding:40px 24px">'
+        +'<div style="font-size:40px;margin-bottom:12px">📚</div>'
+        +'<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:8px">no resources added yet</div>'
+        +'<div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6;max-width:360px;margin-left:auto;margin-right:auto">add video series, books, Bible studies, or other resources you want your groups to have access to.</div>'
+        +'<button class="btn btn-p" onclick="moAddRes()">+ add first resource</button>'
+        +'</div>');
+}
+
+// --- RESOURCES (group leader view — recommendation + bible books) ---
 function rResources(){
   if(CU.type==='ministry')document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddRes()">+ add resource</button>';
   var c=document.getElementById('pc');
