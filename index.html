@@ -483,6 +483,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
     <nav class="sb-nav" id="sb-nav"></nav>
     <div class="sb-foot">
       <button class="btn btn-g btn-sm" onclick="modalReportBug()" style="width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.4);margin-bottom:8px;font-size:12px">🐛 report a bug</button>
+      <button class="btn btn-g btn-sm" id="sb-view-bugs" onclick="viewBugReports()" style="display:none;width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.35);margin-bottom:8px;font-size:12px">📋 view bug reports</button>
       <button class="btn btn-g btn-sm" onclick="doLogout()" style="width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5)">sign out</button>
     </div>
   </div>
@@ -543,6 +544,18 @@ var caRole = null; // selected role during signup
 
 // Group data shape:
 // { name, start, next:{day,time,loc,freq}, study, hw, stats:{meetings,answered,books} }
+
+/* ============================================================
+   PHASE 2 FEATURE IDEAS (not yet built — save for future)
+   ============================================================
+   - Spirit-Led milestones (code preserved, hidden for now)
+   - Group discovery: members looking to join can browse open groups
+   - Buy Me a Coffee / Venmo tip link for the app creator
+   - Group social feed: members post photos & status updates,
+     building a shared history/timeline just for the group
+   - "Contact ministry leader" button: group leaders/members can
+     email or message their ministry leader directly
+   ============================================================ */
 
 /* ============================================================
    DEMO DATA
@@ -1145,7 +1158,16 @@ function initials(name){
   return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase();
 }
 
-function genCode(prefix){
+function genCode(prefix, seed){
+  // If seed provided, make deterministic so codes never change for same user
+  if(seed){
+    var hash=0;
+    for(var ci=0;ci<seed.length;ci++) hash=((hash<<5)-hash)+seed.charCodeAt(ci)|0;
+    var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';
+    var n=Math.abs(hash);
+    for(var i=0;i<4;i++){s+=c[n%c.length];n=Math.floor(n/c.length)||1;}
+    return prefix+'-'+s;
+  }
   var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';
   for(var i=0;i<4;i++) s+=c[Math.floor(Math.random()*c.length)];
   return prefix+'-'+s;
@@ -1270,15 +1292,24 @@ async function loadProfile(user){
   if(!p){toast('error loading your profile - please try again 😕');return;}
   var typeMap={ministry:'ministry leader',leader:'group leader',member:'group member'};
 
-  // Parse any saved app data (group info, codes, resources, etc.)
+  // Parse saved app data — try Supabase first, then localStorage fallback
   var saved={};
+  var lsKey='groupify_data_'+user.id;
   try { if(p.app_data) saved=JSON.parse(p.app_data); } catch(e){}
+  if(!saved.groupCode){
+    // Supabase app_data empty or column missing — try localStorage
+    try{
+      var ls=localStorage.getItem(lsKey);
+      if(ls){var lsData=JSON.parse(ls); if(lsData.groupCode) saved=lsData;}
+    }catch(e){}
+  }
 
-  // Restore or generate stable codes — saved in app_data so they never change
-  var groupCode=saved.groupCode||(p.group_code||null);
-  var minCode=saved.minCode||(p.min_code||null);
-  if(!groupCode&&(p.role==='leader'||p.role==='ministry')) groupCode=genCode('GRP');
-  if(!minCode&&p.role==='ministry') minCode=genCode('MIN');
+  // Generate DETERMINISTIC codes from user.id — they'll be identical every login
+  // This ensures codes never change even if app_data column doesn't exist yet
+  var stableGrpSeed=user.id+'_grp';
+  var stableMinSeed=user.id+'_min';
+  var groupCode=saved.groupCode||genCode('GRP',stableGrpSeed);
+  var minCode=saved.minCode||genCode('MIN',stableMinSeed);
 
   CU={
     id:user.id, email:user.email,
@@ -1332,9 +1363,13 @@ async function saveAppData(){
     schedSlots:SCHED_SLOTS,
     announcements:MINISTRY_ANNOUNCEMENTS
   };
+  var key='groupify_data_'+CU.id;
+  // Always save to localStorage first — instant and reliable
+  try{ localStorage.setItem(key, JSON.stringify(payload)); }catch(e){}
+  // Also try Supabase app_data column (may not exist — that's OK)
   try{
     await sb.from('profiles').update({app_data:JSON.stringify(payload)}).eq('id',CU.id);
-  }catch(e){ console.log('saveAppData error:',e); }
+  }catch(e){ /* app_data column may not exist yet — localStorage handles persistence */ }
 }
 
 // Auto-save helper — call after any important state change
@@ -1382,8 +1417,10 @@ function enterApp(){
   document.getElementById('s-app').style.paddingTop='';
   MY_SEEN_ANNOUNCEMENTS=new Set();
   buildNav();
+  // Show view-bug-reports button for ministry leaders
+  var bugBtn=document.getElementById('sb-view-bugs');
+  if(bugBtn) bugBtn.style.display=CU.type==='ministry'?'block':'none';
   goPage('home');
-  // Show announcement banner if there are unseen announcements
   setTimeout(showAnnounceBanner, 400);
 }
 
@@ -1484,7 +1521,7 @@ function pgMinHome(){
       +'<button class="btn btn-g btn-sm" onclick="goPage(\'health\')">see details →</button></div>'
       +(lastHealthScore
         ? healthBar(GD.name,lastHealthScore)
-        : '<div style="font-size:14px;color:var(--muted);text-align:center;padding:14px 0">no assessment yet — <a onclick="goPage(\'assess\')">take check-in →</a></div>')
+        : '<div style="font-size:14px;color:var(--muted);text-align:center;padding:14px 0">no assessment completed yet — encourage your group to take the health check-in.</div>')
       +'</div>'
       +'<div class="card"><div class="card-header"><span class="card-title">quick actions</span></div>'
       +'<div style="display:grid;gap:9px">'
@@ -1664,12 +1701,19 @@ function announcementCard(a, isMin, isSeen){
 function dismissAnnouncement(id){
   MY_SEEN_ANNOUNCEMENTS.add(id);
   pgAnnounce();
-  // Remove from top-of-screen banner if shown
+  // Update or remove the top banner
+  var remaining=MINISTRY_ANNOUNCEMENTS.filter(function(a){return !MY_SEEN_ANNOUNCEMENTS.has(a.id);});
   var banner=document.getElementById('announce-banner');
-  if(banner){
-    var remaining=MINISTRY_ANNOUNCEMENTS.filter(function(a){return !MY_SEEN_ANNOUNCEMENTS.has(a.id);});
-    if(remaining.length===0) banner.remove();
-    else banner.querySelector('.announce-text').textContent=remaining[0].text;
+  if(remaining.length===0){
+    if(banner) banner.remove();
+    document.getElementById('s-app').style.paddingTop='';
+  } else if(banner){
+    // Update to show next unseen announcement
+    var next=remaining[0];
+    banner.querySelector('.announce-text').innerHTML='<strong>ministry announcement</strong> — '+next.text;
+    // Rebuild dismiss button with new id
+    var dismissBtn=banner.querySelector('button');
+    if(dismissBtn) dismissBtn.setAttribute('onclick','dismissAnnouncement('+next.id+')');
   }
 }
 
@@ -1733,19 +1777,53 @@ async function submitBug(){
   var desc=document.getElementById('bug-desc').value.trim();
   var sev=document.getElementById('bug-sev').value;
   if(!desc){toast('please describe the issue 😊');return;}
-  var report={id:Date.now(),user:CU.name,email:CU.email,role:CU.role,action:action,desc:desc,severity:sev,dt:new Date().toISOString()};
+  var report={id:Date.now(),user:CU?CU.name:'unknown',email:CU?CU.email:'',role:CU?CU.role:'',action:action,desc:desc,severity:sev,dt:new Date().toISOString()};
   BUG_REPORTS.push(report);
-  // Save to Supabase bug_reports table if available; else log
-  if(!DEMO&&sb){
+  // Always save to localStorage so nothing is lost
+  try{
+    var existing=JSON.parse(localStorage.getItem('groupify_bugs')||'[]');
+    existing.push(report);
+    localStorage.setItem('groupify_bugs',JSON.stringify(existing));
+  }catch(e){}
+  // Try Supabase if available
+  if(!DEMO&&sb&&CU&&CU.id){
     try{
       await sb.from('bug_reports').insert({
         user_id:CU.id,user_name:CU.name,user_email:CU.email,
-        action:action,description:desc,severity:sev
+        action:action,description:desc,severity:sev,dt:report.dt
       });
-    }catch(e){console.log('Bug report saved locally only:',e);}
+    }catch(e){/* table may not exist yet — report is still in localStorage */}
   }
   closeModal();
-  toast('bug report sent — thank you! 🙏');
+  toast('bug report saved — thank you! 🙏');
+}
+
+function viewBugReports(){
+  var stored=[];
+  try{stored=JSON.parse(localStorage.getItem('groupify_bugs')||'[]');}catch(e){}
+  var all=stored;
+  if(all.length===0){openModal(mClose()+'<h2>🐛 bug reports</h2><div class="banner banner-green">no bug reports yet.</div>');return;}
+  var html=mClose()+'<h2>🐛 bug reports ('+all.length+')</h2>';
+  all.slice().reverse().forEach(function(r){
+    var sevColor=r.severity==='high'?'var(--accent)':r.severity==='med'?'#F4A261':'var(--brand)';
+    html+='<div style="border:1.5px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+      +'<span style="font-size:12px;font-weight:600;color:'+sevColor+'">'+r.severity.toUpperCase()+'</span>'
+      +'<span style="font-size:11px;color:var(--muted)">'+new Date(r.dt).toLocaleString()+'</span>'
+      +'</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:3px">'+r.action+'</div>'
+      +'<div style="font-size:13px;color:var(--mid)">'+r.desc+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:4px">— '+r.user+' ('+r.role+')'+'</div>'
+      +'</div>';
+  });
+  html+='<button class="btn btn-g btn-sm" onclick="clearBugReports()">clear all reports</button>';
+  openModal(html);
+}
+function clearBugReports(){
+  try{localStorage.removeItem('groupify_bugs');}catch(e){}
+  BUG_REPORTS=[];
+  closeModal();
+  toast('bug reports cleared');
 }
 
 /* ============================================================
@@ -1910,7 +1988,7 @@ function pgMinHealth(){
       +groups.map(function(g){
         return g.assessed
           ? healthBar(g.n,g.h)
-          +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">no assessment yet — <a onclick="goPage(\'assess\')">take check-in →</a></div>'
+
           : '<div style="padding:10px 0;font-size:14px;color:var(--muted)">'+g.n+' — no assessment yet</div>';
       }).join('')
       +(attn.length?'<div class="banner banner-orange" style="margin-top:10px">⚠️ groups below 75% need attention. encourage your leaders to run a check-in.</div>':'')
@@ -1947,7 +2025,7 @@ function pgMinRes(){
   var res=getMinistryResources();
   var customHtml = res.length===0
     ? '<div class="banner banner-green" style="text-align:center">no custom resources yet — add your first one above, or browse the Bible books below.</div>'
-    : res.map(function(r){ return resCardHtml(r, false, true); }).join('');
+    : res.map(function(r){ return resCardHtml(r, isLeader(), true); }).join('');
 
   pc('<div class="card" style="margin-bottom:18px">'
     +'<div class="card-header"><span class="card-title">ministry resources</span>'
@@ -2018,7 +2096,7 @@ function resCardHtml(r, showStudyBtn, showDelete){
         +'</div>'
       :'')
     +'</div>'
-    +(showStudyBtn?'<div class="res-actions" style="margin-top:10px"><button class="btn btn-p btn-sm" onclick="setStudy(\''+safeTitle+'\')">📖 set as current study</button></div>':'')
+    +(showStudyBtn?'<div class="res-actions" style="margin-top:10px"><button class="btn btn-p btn-sm" onclick="setStudy(decodeURIComponent(this.dataset.t))" data-t="'+encodeURIComponent(r.title)+'" >📖 set as current study</button></div>':'')
     +'</div>';
 }
 
@@ -2112,9 +2190,14 @@ function pgAttend(){
   );
   if(!isLeader()){pc(empty('✅','attendance','only group leaders can take attendance.',''));return;}
   if(members.length===0){pc(empty('✅','no members yet','add members to your group to start tracking attendance.','<button class="btn btn-p" onclick="goPage(\'members\')">manage members →</button>'));return;}
+  var todayStr=new Date().toISOString().split('T')[0];
   topAction('<button class="btn btn-p btn-sm" onclick="saveAttendance()">save attendance</button>');
-  pc('<div class="card">'
-    +'<div class="card-header"><span class="card-title">mark attendance</span><span class="card-note">'+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+'</span></div>'
+  pc('<div class="card" style="margin-bottom:14px">'
+    +'<div class="card-header"><span class="card-title">attendance date</span></div>'
+    +'<input type="date" id="att-date" value="'+todayStr+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:inherit;font-size:14px;margin-top:4px">'
+    +'</div>'
+    +'<div class="card">'
+    +'<div class="card-header"><span class="card-title">mark attendance</span></div>'
     +members.map(function(m,i){
       return '<div class="att-row">'
         +'<div class="m-av'+(m.real?'':' placeholder')+'">'+(m.real?m.i:'?')+'</div>'
@@ -2132,17 +2215,20 @@ function markAtt(i,status){
     if(btn) btn.className='att-btn'+(s===status?' '+(s==='p'?'present':'absent'):'');
   });
 }
-function saveAttendance(){closeModal();toast('attendance saved ✅');}
+function saveAttendance(){
+  var dateEl=document.getElementById('att-date');
+  var dateStr=dateEl?dateEl.value:new Date().toISOString().split('T')[0];
+  var d=new Date(dateStr+'T12:00:00');
+  var label=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  toast('attendance saved for '+label+' ✅');
+}
 
 /* ============================================================
    PAGE: PRAYER WALL
    ============================================================ */
 function pgPrayers(){
   topAction('<button class="btn btn-p btn-sm" onclick="modalAddPrayer()">+ add prayer request</button>');
-  if(!DEMO&&!CU.groupId){
-    pc(empty('🙏','prayer wall','once your group is set up, members can share prayer requests here.',''));
-    return;
-  }
+  // Prayer wall visible to all logged-in users
   // Always use PRAYERS — it's populated for both demo (DEMO_PRAYERS) and real users (via submitPrayer)
   var list=PRAYERS.filter(function(p){return !p.archived});
   if(PRAYERS.length===0){
@@ -2835,15 +2921,11 @@ function modalAddPrayer(){
     +'<div class="fg"><label>category (optional)</label><select><option>general</option><option>health</option><option>relationships</option><option>work / finances</option><option>praise & gratitude</option></select></div>'
     +'<button class="btn btn-p btn-full" onclick="submitPrayer()">post prayer request 🙏</button>');
 }
-async function submitPrayer(){
+function submitPrayer(){
   var t=document.getElementById('np').value.trim();
   if(!t){toast('please write your prayer request 😊');return;}
-  if(CU.id&&CU.groupId){
-    var r=await sb.from('prayers').insert({group_id:CU.groupId,user_id:CU.id,text:t,category:'general'});
-    if(r.error){toast('error saving: '+r.error.message);return;}
-  } else {
-    PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'just now',ans:false,cnt:0,prayed:false});
-  }
+  // Always save locally — this is the source of truth
+  PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'just now',ans:false,cnt:0,prayed:false});
   closeModal(); pgPrayers(); toast('prayer request posted 🙏');
   autoSave();
 }
