@@ -787,15 +787,6 @@ function nav(pg){
   if(fn) fn();
 }
 
-function nav(pg){
-  document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active')});
-  var nel=document.getElementById('ni-'+pg);
-  if(nel)nel.classList.add('active');
-  document.getElementById('pg-title').textContent=TITLES[pg]||pg;
-  document.getElementById('topbar-acts').innerHTML='';
-  render(pg);
-}
-
 function yrs(){return Math.floor((Date.now()-new Date(GD.start))/(365.25*24*3600*1000))}
 
 var PAGES={
@@ -818,17 +809,6 @@ var PAGES={
   milestones:rMilestones,
   members:rMembers,
   hdetail:rHDetail
-};
-
-var TITLES={
-  home:'home',groups:'all groups',hresults:'group health overview',
-  resources:'study resources','min-resources':'ministry resources',
-  reminders:'send reminders','reminders-g':'group reminders',
-  stats:'ministry stats',nextmtg:'next meeting',
-  attendance:'attendance',prayers:'prayer wall',icebreaker:'icebreaker & connection',
-  schedule:'scheduling poll',rotation:'location rotation',assessment:'group health check-in',
-  milestones:'milestones & badges',members:'manage members',hdetail:'group health results',
-  'home-g':'group home','home-group':'group home'
 };
 
 // --- MINISTRY HOME ---
