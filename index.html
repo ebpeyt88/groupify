@@ -482,6 +482,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
     </div>
     <nav class="sb-nav" id="sb-nav"></nav>
     <div class="sb-foot">
+      <button class="btn btn-g btn-sm" onclick="modalReportBug()" style="width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.4);margin-bottom:8px;font-size:12px">🐛 report a bug</button>
       <button class="btn btn-g btn-sm" onclick="doLogout()" style="width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5)">sign out</button>
     </div>
   </div>
@@ -589,7 +590,8 @@ var DEMO_GD = {
   stats:{meetings:48,answered:12,books:6}
 };
 
-var PRAYERS = JSON.parse(JSON.stringify(DEMO_PRAYERS));
+// PRAYERS — starts with demo data in demo mode, empty for real accounts
+var PRAYERS = [];
 var votedSlots = new Set([2]);
 
 /* ============================================================
@@ -1081,52 +1083,54 @@ function saveStudyEdits(book){
 var NAV_CONFIG = {
   ministry: [
     {section:'my ministry'},
-    {id:'home',     ic:'🏠', lb:'dashboard'},
-    {id:'groups',   ic:'👥', lb:'all groups'},
-    {id:'health',   ic:'💚', lb:'group health'},
-    {id:'min-res',  ic:'📚', lb:'resources'},
-    {id:'stats',    ic:'📊', lb:'ministry stats'},
+    {id:'home',        ic:'🏠', lb:'dashboard'},
+    {id:'groups',      ic:'👥', lb:'all groups'},
+    {id:'health',      ic:'💚', lb:'group health'},
+    {id:'min-res',     ic:'📚', lb:'resources'},
+    {id:'announce',    ic:'📣', lb:'announcements'},
+    {id:'stats',       ic:'📊', lb:'ministry stats'},
     {divider:'my group'},
-    {id:'grp-home', ic:'🏠', lb:'group home'},
-    {id:'meeting',  ic:'📅', lb:'next meeting'},
-    {id:'attend',   ic:'✅', lb:'attendance'},
-    {id:'prayers',  ic:'🙏', lb:'prayer wall'},
-    {id:'ice',      ic:'💬', lb:'icebreaker'},
-    {id:'sched',    ic:'🗓️', lb:'scheduling'},
-    {id:'rotation', ic:'🏡', lb:'location rotation'},
-    {id:'assess',   ic:'💚', lb:'group health'},
-    {id:'miles',    ic:'🏆', lb:'milestones'},
-    {id:'resources',ic:'📚', lb:'study resources'},
-    {id:'members',  ic:'👤', lb:'manage members'}
+    {id:'grp-home',    ic:'🏠', lb:'group home'},
+    {id:'meeting',     ic:'📅', lb:'next meeting'},
+    {id:'attend',      ic:'✅', lb:'attendance'},
+    {id:'prayers',     ic:'🙏', lb:'prayer wall'},
+    {id:'ice',         ic:'💬', lb:'icebreaker'},
+    {id:'sched',       ic:'🗓️', lb:'scheduling'},
+    {id:'rotation',    ic:'🏡', lb:'location rotation'},
+    {id:'assess',      ic:'💚', lb:'group health'},
+    {id:'miles',       ic:'🏆', lb:'milestones'},
+    {id:'resources',   ic:'📚', lb:'study resources'},
+    {id:'members',     ic:'👤', lb:'manage members'}
   ],
   leader: [
-    {id:'home',     ic:'🏠', lb:'home'},
-    {id:'meeting',  ic:'📅', lb:'next meeting'},
-    {id:'attend',   ic:'✅', lb:'attendance'},
-    {id:'prayers',  ic:'🙏', lb:'prayer wall'},
-    {id:'ice',      ic:'💬', lb:'icebreaker'},
-    {id:'sched',    ic:'🗓️', lb:'scheduling'},
-    {id:'rotation', ic:'🏡', lb:'location rotation'},
-    {id:'assess',   ic:'💚', lb:'group health'},
-    {id:'miles',    ic:'🏆', lb:'milestones'},
-    {id:'resources',ic:'📚', lb:'study resources'},
-    {id:'members',  ic:'👤', lb:'manage members'}
+    {id:'home',        ic:'🏠', lb:'home'},
+    {id:'meeting',     ic:'📅', lb:'next meeting'},
+    {id:'attend',      ic:'✅', lb:'attendance'},
+    {id:'prayers',     ic:'🙏', lb:'prayer wall'},
+    {id:'ice',         ic:'💬', lb:'icebreaker'},
+    {id:'sched',       ic:'🗓️', lb:'scheduling'},
+    {id:'rotation',    ic:'🏡', lb:'location rotation'},
+    {id:'assess',      ic:'💚', lb:'group health'},
+    {id:'miles',       ic:'🏆', lb:'milestones'},
+    {id:'resources',   ic:'📚', lb:'study resources'},
+    {id:'members',     ic:'👤', lb:'manage members'}
   ],
   member: [
-    {id:'home',     ic:'🏠', lb:'home'},
-    {id:'meeting',  ic:'📅', lb:'next meeting'},
-    {id:'prayers',  ic:'🙏', lb:'prayer wall'},
-    {id:'ice',      ic:'💬', lb:'icebreaker'},
-    {id:'sched',    ic:'🗓️', lb:'scheduling poll'},
-    {id:'assess',   ic:'💚', lb:'group health'},
-    {id:'miles',    ic:'🏆', lb:'milestones'},
-    {id:'resources',ic:'📚', lb:'study resources'}
+    {id:'home',        ic:'🏠', lb:'home'},
+    {id:'meeting',     ic:'📅', lb:'next meeting'},
+    {id:'prayers',     ic:'🙏', lb:'prayer wall'},
+    {id:'ice',         ic:'💬', lb:'icebreaker'},
+    {id:'sched',       ic:'🗓️', lb:'scheduling poll'},
+    {id:'assess',      ic:'💚', lb:'group health'},
+    {id:'miles',       ic:'🏆', lb:'milestones'},
+    {id:'resources',   ic:'📚', lb:'study resources'}
   ]
 };
 
 var PAGE_TITLES = {
   home:'home', 'grp-home':'group home', groups:'all groups',
   health:'group health overview', 'min-res':'ministry resources',
+  announce:'announcements',
   stats:'ministry stats', meeting:'next meeting', attend:'attendance',
   prayers:'prayer wall', ice:'icebreaker & connection', sched:'scheduling poll',
   rotation:'location rotation', assess:'group health check-in',
@@ -1255,9 +1259,9 @@ async function doSignIn(){
 
 async function loadProfile(user){
   DEMO=false;
+  PRAYERS=[]; // real accounts start with empty prayer list
   var {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(!p){
-    // Profile doesn't exist yet - create it
     var meta=user.user_metadata||{};
     await sb.from('profiles').insert({id:user.id,full_name:meta.full_name||user.email,role:meta.role||'member'});
     var r2=await sb.from('profiles').select('*').eq('id',user.id).single();
@@ -1265,6 +1269,17 @@ async function loadProfile(user){
   }
   if(!p){toast('error loading your profile - please try again 😕');return;}
   var typeMap={ministry:'ministry leader',leader:'group leader',member:'group member'};
+
+  // Parse any saved app data (group info, codes, resources, etc.)
+  var saved={};
+  try { if(p.app_data) saved=JSON.parse(p.app_data); } catch(e){}
+
+  // Restore or generate stable codes — saved in app_data so they never change
+  var groupCode=saved.groupCode||(p.group_code||null);
+  var minCode=saved.minCode||(p.min_code||null);
+  if(!groupCode&&(p.role==='leader'||p.role==='ministry')) groupCode=genCode('GRP');
+  if(!minCode&&p.role==='ministry') minCode=genCode('MIN');
+
   CU={
     id:user.id, email:user.email,
     name:p.full_name||user.email,
@@ -1274,11 +1289,56 @@ async function loadProfile(user){
     groupId:p.group_id||null,
     ministryId:p.ministry_id||(p.role==='ministry'?user.id:null),
     churchName:p.church_name||'',
-    groupResources:[], placeholderMembers:[]
+    groupCode: groupCode,
+    minCode: minCode,
+    groupResources: saved.groupResources||[],
+    placeholderMembers: saved.placeholderMembers||[],
+    groupRealMembers: saved.groupRealMembers||[]
   };
-  GD={name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  // Restore REAL_MINISTRY_RESOURCES
+  if(saved.ministryResources) REAL_MINISTRY_RESOURCES=saved.ministryResources;
+
+  // Restore group data
+  if(saved.GD && saved.GD.name){
+    GD=saved.GD;
+  } else {
+    GD={name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  }
+
+  // Restore prayers
+  if(saved.prayers) PRAYERS=saved.prayers;
+
+  // Restore scheduling slots
+  if(saved.schedSlots) SCHED_SLOTS=saved.schedSlots;
+  if(saved.announcements) MINISTRY_ANNOUNCEMENTS=saved.announcements;
+
+  // Save the stable codes back immediately so they persist
+  await saveAppData();
   enterApp();
 }
+
+// Save all transient app state to Supabase profiles.app_data
+async function saveAppData(){
+  if(!CU||!CU.id||DEMO) return;
+  var payload={
+    groupCode:CU.groupCode,
+    minCode:CU.minCode,
+    groupResources:CU.groupResources||[],
+    placeholderMembers:CU.placeholderMembers||[],
+    groupRealMembers:CU.groupRealMembers||[],
+    ministryResources:REAL_MINISTRY_RESOURCES,
+    GD:GD,
+    prayers:PRAYERS,
+    schedSlots:SCHED_SLOTS,
+    announcements:MINISTRY_ANNOUNCEMENTS
+  };
+  try{
+    await sb.from('profiles').update({app_data:JSON.stringify(payload)}).eq('id',CU.id);
+  }catch(e){ console.log('saveAppData error:',e); }
+}
+
+// Auto-save helper — call after any important state change
+function autoSave(){ if(!DEMO&&CU&&CU.id) saveAppData(); }
 
 async function doLogout(){
   await sb.auth.signOut();
@@ -1319,8 +1379,12 @@ function enterApp(){
   document.getElementById('sb-role').textContent=CU.role;
   document.getElementById('sb-av').textContent=CU.init;
   document.getElementById('sb-role-lbl').textContent=CU.role;
+  document.getElementById('s-app').style.paddingTop='';
+  MY_SEEN_ANNOUNCEMENTS=new Set();
   buildNav();
   goPage('home');
+  // Show announcement banner if there are unseen announcements
+  setTimeout(showAnnounceBanner, 400);
 }
 
 /* ============================================================
@@ -1357,6 +1421,7 @@ function goPage(id){
     groups:   pgGroups,
     health:   pgMinHealth,
     'min-res':pgMinRes,
+    announce: pgAnnounce,
     stats:    pgStats,
     meeting:  pgMeeting,
     attend:   pgAttend,
@@ -1423,9 +1488,9 @@ function pgMinHome(){
       +'</div>'
       +'<div class="card"><div class="card-header"><span class="card-title">quick actions</span></div>'
       +'<div style="display:grid;gap:9px">'
-      +'<button class="btn btn-s" onclick="goPage(\'assess\')">💚 run health check-in</button>'
       +'<button class="btn btn-g" onclick="goPage(\'groups\')">👥 view all groups</button>'
       +'<button class="btn btn-g" onclick="goPage(\'min-res\')">📚 manage resources</button>'
+      +'<button class="btn btn-g" onclick="goPage(\'health\')">💚 view group health</button>'
       +'</div></div></div>'
       +'<div><div class="card"><div class="card-header"><span class="card-title">ministry code</span></div>'
       +'<div class="invite-code" style="font-size:22px;letter-spacing:2px;color:var(--brand);margin-bottom:8px">'+code+'</div>'
@@ -1480,9 +1545,10 @@ function healthBar(name,pct){
 function pgGrpHome(){
   if(!DEMO&&!CU.groupId){
     pc(empty('👥','start your small group',
-      'create your group to get started - add members, set your meeting schedule, track prayers, and more.',
-      isLeader()?'<button class="btn btn-p" onclick="modalCreateGroup()">+ create my group</button>':
-      '<div class="banner banner-green">your leader will share a group invite code - ask them for it to join their group on groupify.</div>'
+      'create your group to get started, or enter an invite code to join an existing group.',
+      isLeader()
+        ?'<button class="btn btn-p" onclick="modalCreateGroup()">+ create my group</button>'
+        :'<button class="btn btn-p" onclick="modalJoinGroup()">🔗 enter invite code</button>'
     ));
     return;
   }
@@ -1538,6 +1604,148 @@ function pgGrpHome(){
     +'</div>'
     +'</div>'
     +'</div>');
+}
+
+/* ============================================================
+   ANNOUNCEMENTS
+   ============================================================ */
+// Each: {id, text, author, dt, seen:Set(userId)} — stored in ministryId's app_data
+var MINISTRY_ANNOUNCEMENTS = DEMO ? [
+  {id:1, text:'Welcome to groupify! 🎉 We\'re excited to have your group using this tool. Reach out if you need anything.', author:'Eric Peyton', dt:'today', seenBy:[]},
+  {id:2, text:'Reminder: all group leaders should complete a health check-in this month. Thank you!', author:'Eric Peyton', dt:'3 days ago', seenBy:[]}
+] : [];
+var MY_SEEN_ANNOUNCEMENTS = new Set(); // IDs the current user has dismissed
+
+function pgAnnounce(){
+  var isMin=CU.type==='ministry';
+  if(isMin) topAction('<button class="btn btn-p btn-sm" onclick="modalAddAnnouncement()">📣 post announcement</button>');
+
+  var list=MINISTRY_ANNOUNCEMENTS;
+
+  if(list.length===0){
+    pc(empty('📣','no announcements yet',
+      isMin?'post an announcement to notify all group leaders and members in your ministry.':'no announcements from your ministry leader yet.',
+      isMin?'<button class="btn btn-p" onclick="modalAddAnnouncement()">📣 post first announcement</button>':''
+    ));
+    return;
+  }
+
+  var unseen=list.filter(function(a){return !MY_SEEN_ANNOUNCEMENTS.has(a.id);});
+  var html='';
+
+  if(unseen.length>0){
+    html+='<div class="sec-label">📬 new ('+unseen.length+')</div>';
+    html+=unseen.map(function(a){ return announcementCard(a,isMin,false); }).join('');
+  }
+
+  var seen=list.filter(function(a){return MY_SEEN_ANNOUNCEMENTS.has(a.id);});
+  if(seen.length>0){
+    html+='<div class="sec-label" style="margin-top:18px">📁 previous announcements</div>';
+    html+=seen.map(function(a){ return announcementCard(a,isMin,true); }).join('');
+  }
+
+  pc(html);
+}
+
+function announcementCard(a, isMin, isSeen){
+  return '<div class="card" style="margin-bottom:12px'+(isSeen?';opacity:.65':';border-color:var(--accent);border-width:2px')+'">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
+    +'<div style="flex:1">'
+    +(isSeen?'':'<span class="badge badge-green" style="margin-bottom:6px;display:inline-block">new</span><br>')
+    +'<div style="font-size:15px;color:var(--dark);line-height:1.6;margin-bottom:8px">'+a.text+'</div>'
+    +'<div style="font-size:12px;color:var(--muted)">— '+a.author+' · '+a.dt+'</div>'
+    +'</div>'
+    +(isMin?'<button onclick="deleteAnnouncement('+a.id+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:17px;flex-shrink:0" title="delete">✕</button>':'')
+    +'</div>'
+    +(!isSeen?'<div style="margin-top:12px"><button class="btn btn-g btn-sm" onclick="dismissAnnouncement('+a.id+')">✓ mark as seen</button></div>':'')
+    +'</div>';
+}
+
+function dismissAnnouncement(id){
+  MY_SEEN_ANNOUNCEMENTS.add(id);
+  pgAnnounce();
+  // Remove from top-of-screen banner if shown
+  var banner=document.getElementById('announce-banner');
+  if(banner){
+    var remaining=MINISTRY_ANNOUNCEMENTS.filter(function(a){return !MY_SEEN_ANNOUNCEMENTS.has(a.id);});
+    if(remaining.length===0) banner.remove();
+    else banner.querySelector('.announce-text').textContent=remaining[0].text;
+  }
+}
+
+function deleteAnnouncement(id){
+  var idx=MINISTRY_ANNOUNCEMENTS.findIndex(function(a){return a.id===id;});
+  if(idx>-1) MINISTRY_ANNOUNCEMENTS.splice(idx,1);
+  pgAnnounce();
+  autoSave();
+}
+
+function modalAddAnnouncement(){
+  openModal(mClose()+'<h2>📣 post announcement</h2>'
+    +'<div class="modal-sub">this will appear as a highlighted banner for all group leaders and members in your ministry.</div>'
+    +'<div class="fg"><label>announcement</label><textarea rows="4" id="ann-text" placeholder="e.g. Reminder: all groups should complete a health check-in this month..."></textarea></div>'
+    +'<button class="btn btn-p btn-full" onclick="saveAnnouncement()">post announcement 📣</button>');
+}
+function saveAnnouncement(){
+  var text=document.getElementById('ann-text').value.trim();
+  if(!text){toast('please write your announcement 😊');return;}
+  var a={id:Date.now(),text:text,author:CU.name,dt:'just now',seenBy:[]};
+  MINISTRY_ANNOUNCEMENTS.unshift(a);
+  closeModal(); pgAnnounce(); toast('announcement posted 📣');
+  autoSave();
+  showAnnounceBanner();
+}
+
+function showAnnounceBanner(){
+  var unseen=MINISTRY_ANNOUNCEMENTS.filter(function(a){return !MY_SEEN_ANNOUNCEMENTS.has(a.id);});
+  var existing=document.getElementById('announce-banner');
+  if(existing) existing.remove();
+  if(!unseen.length) return;
+  var a=unseen[0];
+  var banner=document.createElement('div');
+  banner.id='announce-banner';
+  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--accent);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.18);font-size:14px;line-height:1.5';
+  banner.innerHTML='<span style="font-size:20px">📣</span>'
+    +'<span class="announce-text" style="flex:1"><strong>ministry announcement</strong> — '+a.text+'</span>'
+    +'<button onclick="dismissAnnouncement('+a.id+')" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px;white-space:nowrap">✓ mark seen</button>'
+    +(unseen.length>1?'<button onclick="goPage(\'announce\')" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;white-space:nowrap">+'+( unseen.length-1)+' more</button>':'');
+  document.body.appendChild(banner);
+  // Offset the app content so banner doesn't cover it
+  document.getElementById('s-app').style.paddingTop='52px';
+}
+
+/* ============================================================
+   REPORT A BUG
+   ============================================================ */
+var BUG_REPORTS = [];
+
+function modalReportBug(){
+  openModal(mClose()+'<h2>🐛 report a bug</h2>'
+    +'<div class="modal-sub">let us know what\'s not working. we\'ll look into it as soon as possible.</div>'
+    +'<div class="fg"><label>what were you trying to do?</label><input type="text" id="bug-action" placeholder="e.g. adding a prayer request"></div>'
+    +'<div class="fg"><label>what went wrong?</label><textarea rows="4" id="bug-desc" placeholder="describe what happened — the more detail, the better..."></textarea></div>'
+    +'<div class="fg"><label>how bad is it?</label>'
+    +'<select id="bug-sev"><option value="low">minor annoyance — I can work around it</option><option value="med">frustrating — it slows me down</option><option value="high">critical — I can\'t use a key feature</option></select></div>'
+    +'<button class="btn btn-p btn-full" onclick="submitBug()">submit report 🐛</button>');
+}
+async function submitBug(){
+  var action=document.getElementById('bug-action').value.trim();
+  var desc=document.getElementById('bug-desc').value.trim();
+  var sev=document.getElementById('bug-sev').value;
+  if(!desc){toast('please describe the issue 😊');return;}
+  var report={id:Date.now(),user:CU.name,email:CU.email,role:CU.role,action:action,desc:desc,severity:sev,dt:new Date().toISOString()};
+  BUG_REPORTS.push(report);
+  // Save to Supabase bug_reports table if available; else log
+  if(!DEMO&&sb){
+    try{
+      await sb.from('bug_reports').insert({
+        user_id:CU.id,user_name:CU.name,user_email:CU.email,
+        action:action,description:desc,severity:sev
+      });
+    }catch(e){console.log('Bug report saved locally only:',e);}
+  }
+  closeModal();
+  toast('bug report sent — thank you! 🙏');
 }
 
 /* ============================================================
@@ -1936,13 +2144,14 @@ function pgPrayers(){
     return;
   }
   // Always use PRAYERS — it's populated for both demo (DEMO_PRAYERS) and real users (via submitPrayer)
-  var list=PRAYERS;
-  if(list.length===0){
+  var list=PRAYERS.filter(function(p){return !p.archived});
+  if(PRAYERS.length===0){
     pc(empty('🙏','no prayers yet','be the first to share something with your group!',''));
     return;
   }
   var active=list.filter(function(p){return !p.ans});
   var answered=list.filter(function(p){return p.ans});
+  var archived=PRAYERS.filter(function(p){return p.archived});
   pc('<div class="g2" style="margin-bottom:16px">'
     +'<div class="stat-card"><div class="stat-em">🙏</div><div class="stat-val">'+list.length+'</div><div class="stat-lbl">prayer requests</div></div>'
     +'<div class="stat-card"><div class="stat-em">✨</div><div class="stat-val">'+answered.length+'</div><div class="stat-lbl">answered prayers</div></div>'
@@ -1951,6 +2160,7 @@ function pgPrayers(){
     +'<div class="tab active" onclick="filterPrayers(\'all\',this)">all ('+list.length+')</div>'
     +'<div class="tab" onclick="filterPrayers(\'active\',this)">active ('+active.length+')</div>'
     +'<div class="tab" onclick="filterPrayers(\'answered\',this)">answered ('+answered.length+')</div>'
+    +(archived.length>0||isLeader()?'<div class="tab" onclick="filterPrayers(\'archived\',this)">archived ('+archived.length+')</div>':'')
     +'</div>'
     +'<div class="card" id="prayer-list">'+prayerListHtml(list)+'</div>');
 }
@@ -1958,6 +2168,7 @@ function prayerListHtml(list){
   return list.map(prayerItemHtml).join('');
 }
 function prayerItemHtml(p){
+  if(p.archived) return ''; // archived prayers don't render normally
   return '<div class="prayer-item'+(p.ans?' answered':'')+'">'
     +'<div class="prayer-meta"><span class="prayer-author">'+p.au+'</span><span class="prayer-date">'+p.dt+'</span></div>'
     +'<div class="prayer-text">'+p.txt+'</div>'
@@ -1966,7 +2177,30 @@ function prayerItemHtml(p){
     +'<span class="pray-count">'+p.cnt+' praying</span>'
     +(p.ans?'<span class="badge badge-green">✨ answered!</span>':'')
     +(!p.ans&&isLeader()?'<button class="btn btn-s btn-sm" onclick="modalMarkAnswered('+p.id+')">mark answered</button>':'')
+    +(isLeader()?'<button class="btn btn-g btn-sm" onclick="archivePrayer('+p.id+')" title="archive this request">archive</button>':'')
     +'</div></div>';
+}
+function archivePrayer(id){
+  var p=PRAYERS.find(function(x){return x.id===id});
+  if(p){p.archived=true;}
+  pgPrayers(); autoSave(); toast('prayer request archived');
+}
+function unarchivePrayer(id){
+  var p=PRAYERS.find(function(x){return x.id===id});
+  if(p){p.archived=false;}
+  renderArchived(); autoSave();
+}
+function renderArchived(){
+  var archived=PRAYERS.filter(function(p){return p.archived});
+  document.getElementById('prayer-list').innerHTML=archived.length===0
+    ?'<div style="padding:20px;text-align:center;color:var(--muted);font-size:14px">no archived requests</div>'
+    :archived.map(function(p){
+      return '<div class="prayer-item" style="opacity:.7">'
+        +'<div class="prayer-meta"><span class="prayer-author">'+p.au+'</span><span class="prayer-date">'+p.dt+' · archived</span></div>'
+        +'<div class="prayer-text">'+p.txt+'</div>'
+        +(isLeader()?'<div class="prayer-actions"><button class="btn btn-g btn-sm" onclick="unarchivePrayer('+p.id+')">restore</button></div>':'')
+        +'</div>';
+    }).join('');
 }
 function togPray(id,btn){
   var p=PRAYERS.find(function(x){return x.id===id});
@@ -1979,7 +2213,9 @@ function togPray(id,btn){
 function filterPrayers(f,el){
   document.querySelectorAll('#prayer-tabs .tab').forEach(function(t){t.classList.remove('active')});
   el.classList.add('active');
-  var list=f==='all'?PRAYERS:f==='answered'?PRAYERS.filter(function(p){return p.ans}):PRAYERS.filter(function(p){return !p.ans});
+  if(f==='archived'){renderArchived();return;}
+  var base=PRAYERS.filter(function(p){return !p.archived});
+  var list=f==='all'?base:f==='answered'?base.filter(function(p){return p.ans}):base.filter(function(p){return !p.ans});
   document.getElementById('prayer-list').innerHTML=prayerListHtml(list);
 }
 
@@ -2057,17 +2293,37 @@ function pgSched(){
     +'</div>');
 }
 function toggleVote(id,btn){
+  var slot=SCHED_SLOTS.find(function(s){return s.id===id});
   if(votedSlots.has(id)){
     votedSlots.delete(id);
     btn.className='poll-vote'; btn.textContent='vote';
     btn.closest('.poll-slot').classList.remove('voted');
-    var slot=SCHED_SLOTS.find(function(s){return s.id===id}); if(slot) slot.votes=(slot.votes||1)-1;
+    if(slot) slot.votes=Math.max(0,(slot.votes||1)-1);
   } else {
     votedSlots.add(id);
     btn.className='poll-vote voted'; btn.textContent='✓ voted';
     btn.closest('.poll-slot').classList.add('voted');
-    var slot=SCHED_SLOTS.find(function(s){return s.id===id}); if(slot) slot.votes=(slot.votes||0)+1;
+    if(slot) slot.votes=(slot.votes||0)+1;
   }
+  // Update count and bar width in DOM without full re-render
+  var maxVotes=Math.max.apply(null,SCHED_SLOTS.map(function(x){return x.votes||0}))||1;
+  SCHED_SLOTS.forEach(function(s){
+    var slotEl=btn.closest('.card');
+    if(!slotEl) return;
+    var allSlots=slotEl.querySelectorAll('.poll-slot');
+    allSlots.forEach(function(el){
+      var voteBtn=el.querySelector('.poll-vote');
+      if(!voteBtn) return;
+      var elId=parseInt(voteBtn.getAttribute('onclick').match(/\d+/)[0]);
+      if(isNaN(elId)) return;
+      var es=SCHED_SLOTS.find(function(x){return x.id===elId});
+      if(!es) return;
+      var countEl=el.querySelector('.poll-count');
+      var barEl=el.querySelector('.poll-bar-fill');
+      if(countEl) countEl.textContent=(es.votes||0)+' vote'+((es.votes||0)!==1?'s':'');
+      if(barEl) barEl.style.width=Math.round(((es.votes||0)/maxVotes)*100)+'%';
+    });
+  });
   toast('vote saved ✅');
 }
 function deleteSlot(id){
@@ -2352,6 +2608,14 @@ function filterBible(f,el){
 function setStudy(title){
   if(!GD) GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   GD.study=title;
+  // Auto-populate homework from first session if a study guide exists
+  var study=BIBLE_STUDIES[title]||null;
+  if(study&&study.sessions&&study.sessions.length>0){
+    var s0=study.sessions[0];
+    GD.hw='📖 '+s0.reading+(s0.assignment?' — '+s0.assignment:'');
+    GD._studySession=0; // track which session we're on
+  }
+  autoSave();
   toast('"'+title+'" set as current study 📖');
   pgResources();
 }
@@ -2385,6 +2649,7 @@ function pgMembers(){
           +'<div class="m-actions">'
           +(placeholder
             ?'<span class="badge badge-grey">not yet joined</span>'
+              +'<button class="btn btn-g btn-sm" onclick="modalEditRolePlaceholder(\''+m.n.replace(/'/g,"\\'")+'\')">edit role</button>'
               +'<button class="btn btn-g btn-sm" onclick="modalMergePlaceholder(\''+m.n.replace(/'/g,"\\'")+'\')">merge</button>'
               +'<button class="btn btn-g btn-sm" onclick="removePlaceholder(\''+m.n.replace(/'/g,"\\'")+'\')">remove</button>'
             :'<span class="badge badge-green">✓ joined</span><button class="btn btn-g btn-sm" onclick="modalEditRole(\''+m.n.replace(/'/g,"\\'")+'\')">edit role</button>')
@@ -2483,6 +2748,7 @@ async function doCreateGroup(){
   }
   GD={name:name,start:start,next:{day:day,date:date,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   closeModal();
+  await autoSave();
   goPage(CU.type==='ministry'?'grp-home':'home');
   toast('group created! 🎉');
 }
@@ -2490,6 +2756,22 @@ async function doCreateGroup(){
 function modalEditMeeting(){
   var n=GD&&GD.next?GD.next:{};
   var todayVal=n.date||new Date().toISOString().split('T')[0];
+  var studyName=GD&&GD.study?GD.study:'';
+  var study=studyName?BIBLE_STUDIES[studyName]:null;
+  var sessionNav='';
+  if(study&&study.sessions&&study.sessions.length>0){
+    var si=GD._studySession||0;
+    var s=study.sessions[si];
+    sessionNav='<div style="background:var(--brand-p);border:1px solid var(--brand-l);border-radius:var(--rsm);padding:12px 14px;margin-bottom:10px">'
+      +'<div style="font-size:11px;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">study guide — session '+(si+1)+' of '+study.sessions.length+'</div>'
+      +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:4px">'+s.title+'</div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:10px">📖 '+s.reading+'</div>'
+      +'<div style="display:flex;gap:8px">'
+      +(si>0?'<button type="button" class="btn btn-g btn-sm" onclick="changeStudySession(-1)">← prev session</button>':'')
+      +(si<study.sessions.length-1?'<button type="button" class="btn btn-g btn-sm" onclick="changeStudySession(1)">next session →</button>':'')
+      +'<button type="button" class="btn btn-s btn-sm" onclick="useThisSession('+si+')">use this session ↓</button>'
+      +'</div></div>';
+  }
   openModal(mClose()+'<h2>📅 edit meeting details</h2>'
     +'<div class="fg"><label>meeting day</label>'
     +'<select id="em-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
@@ -2500,8 +2782,9 @@ function modalEditMeeting(){
     +'<select id="em-freq"><option>weekly</option><option>every other week</option><option>monthly</option><option>irregular / varies</option></select></div>'
     +'<hr class="divider">'
     +'<div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:12px">📖 study & homework</div>'
-    +'<div class="fg"><label>current study / book</label><input type="text" id="em-study" value="'+(GD&&GD.study?GD.study:'')+'" placeholder="e.g. James, The Chosen Season 1"></div>'
-    +'<div class="fg"><label>homework for next meeting</label><textarea rows="3" id="em-hw" placeholder="e.g. read chapters 3-4 and journal...">'+(GD&&GD.hw?GD.hw:'')+'</textarea></div>'
+    +sessionNav
+    +'<div class="fg"><label>current study / book</label><input type="text" id="em-study" value="'+studyName+'" placeholder="e.g. James, The Chosen Season 1"></div>'
+    +'<div class="fg"><label>homework / reading for next meeting</label><textarea rows="3" id="em-hw" placeholder="e.g. read chapters 3-4 and journal...">'+(GD&&GD.hw?GD.hw:'')+'</textarea></div>'
     +'<button class="btn btn-p btn-full" onclick="saveMeeting()">save changes</button>');
   setTimeout(function(){
     var ds=document.getElementById('em-day');
@@ -2511,6 +2794,22 @@ function modalEditMeeting(){
     if(ts&&n.time) Array.from(ts.options).forEach(function(o){if(o.value===n.time)o.selected=true;});
     if(fs&&n.freq) Array.from(fs.options).forEach(function(o){if(o.value===n.freq)o.selected=true;});
   },50);
+}
+function changeStudySession(dir){
+  if(!GD) return;
+  var study=GD.study?BIBLE_STUDIES[GD.study]:null;
+  if(!study) return;
+  var si=Math.max(0,Math.min(study.sessions.length-1,(GD._studySession||0)+dir));
+  GD._studySession=si;
+  modalEditMeeting();
+}
+function useThisSession(si){
+  if(!GD) return;
+  var study=GD.study?BIBLE_STUDIES[GD.study]:null;
+  if(!study||!study.sessions[si]) return;
+  var s=study.sessions[si];
+  var hwEl=document.getElementById('em-hw');
+  if(hwEl) hwEl.value='📖 '+s.reading+(s.assignment?' — '+s.assignment:'');
 }
 function saveMeeting(){
   if(!GD) GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
@@ -2525,7 +2824,7 @@ function saveMeeting(){
   GD.hw=document.getElementById('em-hw').value;
   closeModal();
   toast('meeting details saved 📅');
-  // Refresh whichever page we're on
+  autoSave();
   var active=document.querySelector('.ni.active');
   if(active) goPage(active.id.replace('ni-',''));
 }
@@ -2546,6 +2845,7 @@ async function submitPrayer(){
     PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'just now',ans:false,cnt:0,prayed:false});
   }
   closeModal(); pgPrayers(); toast('prayer request posted 🙏');
+  autoSave();
 }
 
 function modalMarkAnswered(id){
@@ -2560,6 +2860,7 @@ function doMarkAnswered(id){
   var p=PRAYERS.find(function(x){return x.id===id});
   if(p){p.ans=true;p.anote=document.getElementById('ans-note').value;}
   closeModal(); pgPrayers(); toast('answered prayer logged! 🎉');
+  autoSave();
 }
 
 function modalAddPlaceholder(){
@@ -2577,13 +2878,80 @@ function savePlaceholder(){
   CU.placeholderMembers.push({n:name,r:role,real:false});
   if(DEMO) DEMO_MEMBERS.push({n:name,r:role,i:initials(name),real:false});
   closeModal(); pgMembers(); toast(name+' added 👤');
+  autoSave();
 }
 
 function modalEditRole(name){
+  var realArr=DEMO?DEMO_MEMBERS:(CU.groupRealMembers||[]);
+  var m=realArr.find(function(x){return x.n===name});
+  var cur=m?m.r:'group member';
   openModal(mClose()+'<h2>edit role</h2>'
     +'<div class="fg"><label>role for '+name+'</label>'
-    +'<select id="er-role">'+MEMBER_ROLES.map(function(r){return '<option>'+r+'</option>'}).join('')+'</select></div>'
-    +'<button class="btn btn-p btn-full" onclick="closeModal();toast(\'role updated ✅\')">save</button>');
+    +'<select id="er-role">'+MEMBER_ROLES.map(function(r){return '<option'+(r===cur?' selected':'')+'>'+r+'</option>'}).join('')+'</select></div>'
+    +'<button class="btn btn-p btn-full" onclick="saveRole(\''+name.replace(/'/g,"\\'")+'\',false)">save</button>');
+}
+function modalEditRolePlaceholder(name){
+  var phArr=DEMO?DEMO_MEMBERS:(CU.placeholderMembers||[]);
+  var m=phArr.find(function(x){return x.n===name&&x.real===false});
+  var cur=m?m.r:'group member';
+  openModal(mClose()+'<h2>edit role</h2>'
+    +'<div class="fg"><label>role for '+name+'</label>'
+    +'<select id="er-role">'+MEMBER_ROLES.map(function(r){return '<option'+(r===cur?' selected':'')+'>'+r+'</option>'}).join('')+'</select></div>'
+    +'<button class="btn btn-p btn-full" onclick="saveRole(\''+name.replace(/'/g,"\\'")+'\',true)">save</button>');
+}
+function saveRole(name, isPlaceholder){
+  var role=document.getElementById('er-role').value;
+  if(isPlaceholder){
+    var phArr=DEMO?DEMO_MEMBERS:(CU.placeholderMembers||[]);
+    var m=phArr.find(function(x){return x.n===name&&x.real===false});
+    if(m) m.r=role;
+  } else {
+    var realArr=DEMO?DEMO_MEMBERS:(CU.groupRealMembers||[]);
+    var m=realArr.find(function(x){return x.n===name});
+    if(m) m.r=role;
+  }
+  closeModal(); pgMembers(); toast('role updated ✅');
+  autoSave();
+}
+
+function modalJoinGroup(){
+  openModal(mClose()+'<h2>🔗 join a group</h2>'
+    +'<div class="modal-sub">enter the invite code your group leader gave you.</div>'
+    +'<div class="fg"><label>group invite code</label><input type="text" id="jg-code" placeholder="e.g. GRP-ABCD" style="text-transform:uppercase;letter-spacing:2px"></div>'
+    +'<button class="btn btn-p btn-full" onclick="doJoinGroup()">join group</button>');
+}
+async function doJoinGroup(){
+  var code=document.getElementById('jg-code').value.trim().toUpperCase();
+  if(!code){toast('please enter an invite code 😊');return;}
+  if(DEMO){toast('demo mode — in a real account this would connect you to the group');return;}
+  // Look up the group leader who owns this code
+  // We search app_data for matching groupCode
+  var {data:profiles}=await sb.from('profiles').select('id,app_data,full_name').eq('role','leader');
+  var matchProfile=null;
+  (profiles||[]).forEach(function(prof){
+    try{
+      var d=prof.app_data?JSON.parse(prof.app_data):{};
+      if(d.groupCode===code) matchProfile={id:prof.id,data:d,name:prof.full_name};
+    }catch(e){}
+  });
+  if(!matchProfile){
+    toast('code not found — check with your group leader 😊');return;
+  }
+  // Add this user to the leader's groupRealMembers list
+  var leaderData=matchProfile.data;
+  if(!leaderData.groupRealMembers) leaderData.groupRealMembers=[];
+  var alreadyIn=leaderData.groupRealMembers.find(function(m){return m.id===CU.id;});
+  if(!alreadyIn){
+    leaderData.groupRealMembers.push({id:CU.id,n:CU.name,r:'group member',i:CU.init,real:true});
+    await sb.from('profiles').update({app_data:JSON.stringify(leaderData)}).eq('id',matchProfile.id);
+  }
+  // Set this user's group link
+  CU.groupId='linked-to-'+matchProfile.id;
+  GD=leaderData.GD||{name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  await saveAppData();
+  closeModal();
+  toast('you\'ve joined '+GD.name+'! 🎉');
+  goPage('home');
 }
 
 function modalInviteCode(){
@@ -2680,6 +3048,7 @@ function saveResource(scope){
     closeModal(); pgResources();
   }
   toast('resource added 📚');
+  autoSave();
 }
 
 function modalEditMinRes(id){
@@ -2746,6 +3115,7 @@ function saveEditMinRes(id){
     });
   }
   closeModal(); pgMinRes(); toast('resource updated ✅');
+  autoSave();
 }
 
 function modalAddHost(){
