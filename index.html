@@ -347,7 +347,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 // --- SUPABASE INIT ---
 const SUPA_URL = 'https://yhwiabbbbzudtjknzzbl.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlod2lhYmJiYnp1ZHRqa256emJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNTY4NjgsImV4cCI6MjA4NzYzMjg2OH0.P_86ElyvMF2q6HXlrmvhbbo-txcnnXKXckcYsGk_Ocs';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+var sb = null;
+try {
+  sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+} catch(e) {
+  console.error('Supabase init failed:', e);
+}
 
 var CU=null,asmAns={},asmDone=false,votedSlots=new Set([3]);
 var caRole=null;
@@ -420,17 +425,43 @@ async function realSignIn() {
   var email = document.getElementById('si-email').value.trim();
   var pw = document.getElementById('si-pw').value;
   if (!email || !pw) { toast('please enter your email and password 😊'); return; }
+
   var btn = document.querySelector('#view-signin .btn-p');
   btn.textContent = 'signing in...';
   btn.disabled = true;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
-  if (error) {
-    toast('sign in failed: ' + error.message + ' 😕');
-    btn.textContent = 'sign in';
-    btn.disabled = false;
-    return;
+
+  try {
+    // Check Supabase loaded
+    if (typeof supabase === 'undefined' || !sb) {
+      toast('connection error — please refresh the page and try again 😕');
+      btn.textContent = 'sign in'; btn.disabled = false; return;
+    }
+
+    var result = await sb.auth.signInWithPassword({ email: email, password: pw });
+    var data = result.data;
+    var error = result.error;
+
+    if (error) {
+      var msg = error.message || 'unknown error';
+      if (msg.includes('Invalid login')) msg = 'incorrect email or password';
+      if (msg.includes('Email not confirmed')) msg = 'please confirm your email first — check your inbox 📬';
+      toast('sign in failed: ' + msg + ' 😕');
+      btn.textContent = 'sign in'; btn.disabled = false;
+      return;
+    }
+
+    if (!data || !data.user) {
+      toast('something went wrong — please try again 😕');
+      btn.textContent = 'sign in'; btn.disabled = false;
+      return;
+    }
+
+    await loadUserProfile(data.user);
+
+  } catch(e) {
+    toast('error: ' + e.message + ' 😕');
+    btn.textContent = 'sign in'; btn.disabled = false;
   }
-  await loadUserProfile(data.user);
 }
 
 // --- CREATE ACCOUNT FLOW ---
