@@ -775,41 +775,48 @@ function nav(pg){
   document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active')});
   var nel=document.getElementById('ni-'+pg);
   if(nel)nel.classList.add('active');
-  // Route ministry-specific aliases
-  var realPg = pg;
+  var realPg=pg;
   if(pg==='home-g') realPg='home-group';
   if(pg==='reminders-g') realPg='reminders-group';
-  if(pg==='min-resources') realPg='min-resources';
-  document.getElementById('pg-title').textContent=TITLES[pg]||TITLES[realPg]||pg;
+  var titleMap={
+    home:'home','home-group':'group home','home-g':'group home',
+    groups:'all groups',hresults:'group health overview',
+    resources:'study resources','min-resources':'ministry resources',
+    reminders:'send reminders','reminders-g':'group reminders','reminders-group':'group reminders',
+    stats:'ministry stats',nextmtg:'next meeting',attendance:'attendance',
+    prayers:'prayer wall',icebreaker:'icebreaker & connection',schedule:'scheduling poll',
+    rotation:'location rotation',assessment:'group health check-in',
+    milestones:'milestones & badges',members:'manage members',hdetail:'group health results'
+  };
+  document.getElementById('pg-title').textContent=titleMap[realPg]||titleMap[pg]||pg;
   document.getElementById('topbar-acts').innerHTML='';
   document.getElementById('pc').innerHTML='';
-  var fn=PAGES[realPg]||PAGES[pg];
+  var pageMap={
+    home:function(){CU.type==='ministry'?rMinHome():rMemHome()},
+    'home-group':function(){rMemHome()},
+    groups:function(){rGroups()},
+    hresults:function(){rMinHealth()},
+    resources:function(){rResources()},
+    'min-resources':function(){rMinResources()},
+    reminders:function(){rReminders()},
+    'reminders-group':function(){rReminders()},
+    stats:function(){rStats()},
+    nextmtg:function(){rNextMtg()},
+    attendance:function(){rAttendance()},
+    prayers:function(){rPrayers()},
+    icebreaker:function(){rIcebreaker()},
+    schedule:function(){rSchedule()},
+    rotation:function(){rRotation()},
+    assessment:function(){asmDone?rHDetail():rAssessment()},
+    milestones:function(){rMilestones()},
+    members:function(){rMembers()},
+    hdetail:function(){rHDetail()}
+  };
+  var fn=pageMap[realPg]||pageMap[pg];
   if(fn) fn();
 }
 
 function yrs(){return Math.floor((Date.now()-new Date(GD.start))/(365.25*24*3600*1000))}
-
-var PAGES={
-  home:function(){CU.type==='ministry'?rMinHome():rMemHome()},
-  'home-group':rMemHome,
-  groups:rGroups,
-  hresults:rMinHealth,
-  resources:rResources,
-  'min-resources':rMinResources,
-  reminders:rReminders,
-  'reminders-group':rReminders,
-  stats:rStats,
-  nextmtg:rNextMtg,
-  attendance:rAttendance,
-  prayers:rPrayers,
-  icebreaker:rIcebreaker,
-  schedule:rSchedule,
-  rotation:rRotation,
-  assessment:function(){asmDone?rHDetail():rAssessment()},
-  milestones:rMilestones,
-  members:rMembers,
-  hdetail:rHDetail
-};
 
 // --- MINISTRY HOME ---
 function rMinHome(){
