@@ -685,7 +685,6 @@ var NAV={
     {id:'groups',ic:'👥',lb:'all groups'},
     {id:'hresults',ic:'💚',lb:'group health'},
     {id:'min-resources',ic:'📚',lb:'resources'},
-    {id:'reminders',ic:'🔔',lb:'send reminders'},
     {id:'stats',ic:'📊',lb:'ministry stats'},
     {id:'__divider__',ic:'',lb:'my group'},
     {id:'home-g',ic:'🏠',lb:'group home'},
@@ -698,8 +697,7 @@ var NAV={
     {id:'assessment',ic:'💚',lb:'group health'},
     {id:'milestones',ic:'🏆',lb:'milestones'},
     {id:'resources',ic:'📚',lb:'study resources'},
-    {id:'members',ic:'👤',lb:'manage members'},
-    {id:'reminders-g',ic:'🔔',lb:'group reminders'}
+    {id:'members',ic:'👤',lb:'manage members'}
   ],
   leader:[
     {id:'home',ic:'🏠',lb:'home'},
@@ -711,9 +709,8 @@ var NAV={
     {id:'rotation',ic:'🏡',lb:'location rotation'},
     {id:'assessment',ic:'💚',lb:'group health'},
     {id:'milestones',ic:'🏆',lb:'milestones'},
-    {id:'resources',ic:'📚',lb:'resources'},
-    {id:'members',ic:'👤',lb:'manage members'},
-    {id:'reminders',ic:'🔔',lb:'reminders'}
+    {id:'resources',ic:'📚',lb:'study resources'},
+    {id:'members',ic:'👤',lb:'manage members'}
   ],
   member:[
     {id:'home',ic:'🏠',lb:'home'},
@@ -723,7 +720,7 @@ var NAV={
     {id:'schedule',ic:'🗓️',lb:'scheduling poll'},
     {id:'assessment',ic:'💚',lb:'group health'},
     {id:'milestones',ic:'🏆',lb:'milestones'},
-    {id:'resources',ic:'📚',lb:'resources'}
+    {id:'resources',ic:'📚',lb:'study resources'}
   ]
 };
 
@@ -822,14 +819,18 @@ function yrs(){return Math.floor((Date.now()-new Date(GD.start))/(365.25*24*3600
 function rMinHome(){
   var c=document.getElementById('pc');
   if (!DEMO_MODE) {
+    var minCode = CU.minCode || (CU.minCode = genCode('MIN'));
     c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
       +'<div style="font-size:48px;margin-bottom:16px">⛪</div>'
       +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify!</div>'
-      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">your ministry dashboard will come to life as group leaders create groups and members start using the app. start by sharing groupify with your group leaders!</div>'
-      +'<div style="display:grid;gap:10px;max-width:320px;margin:0 auto">'
-      +'<button class="btn btn-p" onclick="nav(\'reminders\')">🔔 invite group leaders</button>'
-      +'<button class="btn btn-s" onclick="nav(\'resources\')">📚 add study resources</button>'
-      +'</div></div>';
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">share your ministry invite code with group leaders so they can connect to your ministry when signing up.</div>'
+      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:20px;margin-bottom:18px;max-width:320px;margin-left:auto;margin-right:auto">'
+      +'<div style="font-size:11px;color:var(--brand);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">ministry invite code</div>'
+      +'<div style="font-size:32px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:10px">'+minCode+'</div>'
+      +'<button class="btn btn-p btn-sm" onclick="navigator.clipboard.writeText(\''+minCode+'\');toast(\'code copied! 📋\')">copy code</button>'
+      +'</div>'
+      +'<button class="btn btn-s" onclick="nav(\'min-resources\')">📚 add study resources</button>'
+      +'</div>';
     return;
   }
   c.innerHTML='<div class="g4" style="margin-bottom:18px">'
@@ -843,13 +844,12 @@ function rMinHome(){
     +MGROUPS.map(function(g){return '<div class="hbr"><div class="hbl"><span>'+g.n+'</span><span>'+g.h+'%</span></div><div class="hbt"><div class="hbf'+(g.h<65?' low':g.h<80?' med':'')+'" style="width:'+g.h+'%"></div></div></div>'}).join('')
     +'</div></div>'
     +'<div><div class="card"><div class="ch"><span class="ct">needs attention</span></div>'
-    +MGROUPS.filter(function(g){return g.h<70}).map(function(g){return '<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:14px">'+g.n+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">health: '+g.h+'% · last met '+g.lm+'</div><button class="btn btn-s btn-sm" style="margin-top:8px" onclick="toast(\'reminder sent to '+g.n+' leader 📬\')">send check-in</button></div>'}).join('')
+    +MGROUPS.filter(function(g){return g.h<70}).map(function(g){return '<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:14px">'+g.n+'</div><div style="font-size:13px;color:var(--muted);margin-top:2px">health: '+g.h+'% · last met '+g.lm+'</div></div>'}).join('')
     +'</div>'
     +'<div class="card"><div class="ch"><span class="ct">quick actions</span></div>'
     +'<div style="display:grid;gap:9px">'
-    +'<button class="btn btn-p" onclick="nav(\'reminders\')">🔔 send reminder to all groups</button>'
     +'<button class="btn btn-s" onclick="nav(\'hresults\')">💚 view health assessments</button>'
-    +'<button class="btn btn-g" onclick="nav(\'resources\')">📚 manage resources</button>'
+    +'<button class="btn btn-g" onclick="nav(\'min-resources\')">📚 manage resources</button>'
     +'</div></div>'
     +'</div></div>';
 }
@@ -1107,7 +1107,7 @@ function rSchedule(){
       +'<div class="fg" style="margin-bottom:0"><label>day</label>'
       +'<select id="new-sched-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
       +'<div class="fg" style="margin-bottom:0"><label>time</label>'
-      +'<select id="new-sched-time"><option>6:00 AM</option><option>7:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>12:00 PM</option><option>5:00 PM</option><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option></select></div>'
+      +'<select id="new-sched-time"><option>12:00 AM</option><option>12:30 AM</option><option>1:00 AM</option><option>1:30 AM</option><option>2:00 AM</option><option>2:30 AM</option><option>3:00 AM</option><option>3:30 AM</option><option>4:00 AM</option><option>4:30 AM</option><option>5:00 AM</option><option>5:30 AM</option><option>6:00 AM</option><option>6:30 AM</option><option>7:00 AM</option><option>7:30 AM</option><option>8:00 AM</option><option>8:30 AM</option><option>9:00 AM</option><option>9:30 AM</option><option>10:00 AM</option><option>10:30 AM</option><option>11:00 AM</option><option>11:30 AM</option><option>12:00 PM</option><option>12:30 PM</option><option>1:00 PM</option><option>1:30 PM</option><option>2:00 PM</option><option>2:30 PM</option><option>3:00 PM</option><option>3:30 PM</option><option>4:00 PM</option><option>4:30 PM</option><option>5:00 PM</option><option>5:30 PM</option><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option><option>8:30 PM</option><option>9:00 PM</option><option>9:30 PM</option><option>10:00 PM</option><option>10:30 PM</option><option>11:00 PM</option><option>11:30 PM</option></select></div>'
       +'</div>'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
       +'<button class="btn btn-p" onclick="addSchedSlot()">+ add this option</button>'
@@ -1560,9 +1560,10 @@ function rMinResources(){
         +'</div>');
 }
 
-// --- RESOURCES (group leader view — recommendation + bible books) ---
+// --- RESOURCES (group leader/member view - recommendation + bible books) ---
 function rResources(){
-  if(CU.type==='ministry')document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moAddRes()">+ add resource</button>';
+  // Only ministry leaders can add resources - no button for others
+  document.getElementById('topbar-acts').innerHTML='';
   var c=document.getElementById('pc');
 
   // For real ministry leaders: show empty custom resources + full Bible list
@@ -1704,7 +1705,7 @@ function moCreateGroup(){
     +'<div class="fg"><label>when did your group start?</label><input type="date" id="cg-start" value="'+new Date().toISOString().split('T')[0]+'"></div>'
     +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, enter the real start date - you\'ll instantly earn your milestone badges!</div>'
     +'<div class="fg"><label>meeting day</label><select id="cg-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
-    +'<div class="fg"><label>meeting time</label><select id="cg-time"><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option></select></div>'
+    +'<div class="fg"><label>meeting time</label><select id="cg-time"><option>12:00 AM</option><option>12:30 AM</option><option>1:00 AM</option><option>1:30 AM</option><option>2:00 AM</option><option>2:30 AM</option><option>3:00 AM</option><option>3:30 AM</option><option>4:00 AM</option><option>4:30 AM</option><option>5:00 AM</option><option>5:30 AM</option><option>6:00 AM</option><option>6:30 AM</option><option>7:00 AM</option><option>7:30 AM</option><option>8:00 AM</option><option>8:30 AM</option><option>9:00 AM</option><option>9:30 AM</option><option>10:00 AM</option><option>10:30 AM</option><option>11:00 AM</option><option>11:30 AM</option><option>12:00 PM</option><option>12:30 PM</option><option>1:00 PM</option><option>1:30 PM</option><option>2:00 PM</option><option>2:30 PM</option><option>3:00 PM</option><option>3:30 PM</option><option>4:00 PM</option><option>4:30 PM</option><option>5:00 PM</option><option>5:30 PM</option><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option><option>8:30 PM</option><option>9:00 PM</option><option>9:30 PM</option><option>10:00 PM</option><option>10:30 PM</option><option>11:00 PM</option><option>11:30 PM</option></select></div>'
     +'<button class="btn btn-p btn-full" onclick="saveNewGroup()">create group 🎉</button>');
 }
 
@@ -1715,18 +1716,22 @@ async function saveNewGroup(){
   var day = document.getElementById('cg-day').value;
   var time = document.getElementById('cg-time').value;
   if (CU.id) {
-    const { data, error } = await sb.from('groups').insert({
+    var ins = await sb.from('groups').insert({
       name: name, start_date: start, meeting_day: day,
       meeting_time: time, created_by: CU.id
     }).select().single();
-    if (error) { toast('error creating group: ' + error.message); return; }
-    await sb.from('group_members').insert({ group_id: data.id, user_id: CU.id, role: 'leader' });
-    CU.groupId = data.id;
+    if (ins.error) { toast('error creating group: ' + ins.error.message); return; }
+    var gid = ins.data.id;
+    // Update profile with group_id first, then insert member
+    await sb.from('profiles').update({ group_id: gid }).eq('id', CU.id);
+    var mem = await sb.from('group_members').insert({ group_id: gid, user_id: CU.id, role: 'leader' });
+    if (mem.error) { toast('group created but member link failed: ' + mem.error.message); }
+    CU.groupId = gid;
     GD.name = name; GD.start = start; GD.next.day = day; GD.next.time = time;
   } else {
     GD.name = name;
   }
-  closeMo(); nav('home'); toast('group created! 🎉');
+  closeMo(); nav('home-group'); toast('group created! 🎉');
 }
 
 function moAddPrayer(){
@@ -1771,18 +1776,50 @@ function confAns(id){
 }
 
 function moEditMtg(){
-  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>edit meeting details</h2>'
-    +'<div class="fg"><label>meeting day</label><input type="text" value="'+GD.next.day+'"></div>'
-    +'<div class="fg"><label>time</label><input type="text" value="'+GD.next.time+'"></div>'
-    +'<div class="fg"><label>location</label><input type="text" value="'+GD.next.loc+'"></div>'
-    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'meeting details updated 📅\')">save changes</button>');
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>📅 edit meeting details</h2>'
+    +'<div class="fg"><label>meeting day</label><select id="em-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
+    +'<div class="fg"><label>meeting time</label><select id="em-time">'+allTimeOptions()+'</select></div>'
+    +'<div class="fg"><label>location / host\'s name</label><input type="text" id="em-loc" value="'+(GD.next.loc||'')+'" placeholder="e.g. Marcus & Jenna\'s"></div>'
+    +'<div class="fg"><label>frequency</label><select id="em-freq"><option>weekly</option><option>every other week</option><option>monthly</option></select></div>'
+    +'<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">'
+    +'<div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:12px">📖 study & homework</div>'
+    +'<div class="fg"><label>current study / book</label><input type="text" id="em-study" value="'+(GD.study||'')+'" placeholder="e.g. James, The Chosen Season 1"></div>'
+    +'<div class="fg"><label>homework for next meeting</label><textarea rows="3" id="em-hw" placeholder="e.g. Read chapters 3-4 and journal about...">'+(GD.hw||'')+'</textarea></div>'
+    +'<button class="btn btn-p btn-full" onclick="saveMtgDetails()">save changes</button>');
+  // Set current values
+  setTimeout(function(){
+    var ds = document.getElementById('em-day');
+    var ts = document.getElementById('em-time');
+    var fs = document.getElementById('em-freq');
+    if(ds && GD.next.day) Array.from(ds.options).forEach(function(o){if(o.value===GD.next.day)o.selected=true});
+    if(ts && GD.next.time) Array.from(ts.options).forEach(function(o){if(o.value===GD.next.time)o.selected=true});
+    if(fs && GD.freq) Array.from(fs.options).forEach(function(o){if(o.value===GD.freq)o.selected=true});
+  }, 50);
 }
 
-function moEditStudy(){
-  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>📖 edit study info</h2>'
-    +'<div class="fg"><label>current study</label><input type="text" value="'+GD.study+'"></div>'
-    +'<div class="fg"><label>homework for next meeting</label><textarea rows="3">'+GD.hw+'</textarea></div>'
-    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'study info updated 📖\')">save</button>');
+function allTimeOptions(){
+  var times='';
+  for(var h=0;h<24;h++){
+    for(var m=0;m<60;m+=30){
+      var h12=h%12||12;
+      var ampm=h<12?'AM':'PM';
+      var mStr=m===0?'00':'30';
+      times+='<option>'+h12+':'+mStr+' '+ampm+'</option>';
+    }
+  }
+  return times;
+}
+
+function saveMtgDetails(){
+  var day = document.getElementById('em-day').value;
+  var time = document.getElementById('em-time').value;
+  var loc = document.getElementById('em-loc').value;
+  var freq = document.getElementById('em-freq').value;
+  var study = document.getElementById('em-study').value;
+  var hw = document.getElementById('em-hw').value;
+  GD.next.day = day; GD.next.time = time; GD.next.loc = loc;
+  GD.freq = freq; GD.study = study; GD.hw = hw;
+  closeMo(); nav('nextmtg'); toast('meeting details saved 📅');
 }
 
 function moEditRole(name){
