@@ -857,15 +857,15 @@ function rMinHome(){
 // --- MEMBER / LEADER HOME ---
 function rMemHome(){
   var c=document.getElementById('pc');
+  var isLeader = CU.type === 'leader' || CU.type === 'ministry';
 
   if (!DEMO_MODE && !CU.groupId) {
-    var isLeader = CU.type === 'leader';
     c.innerHTML='<div class="card" style="text-align:center;padding:48px 24px">'
-      +'<div style="font-size:48px;margin-bottom:16px">'+(isLeader?'👥':'🙋')+'</div>'
-      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify, '+CU.name.split(' ')[0]+'!</div>'
+      +'<div style="font-size:48px;margin-bottom:16px">👥</div>'
+      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">start your small group</div>'
       +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">'
       +(isLeader
-        ? "you're all set up as a group leader. create your group to get started - you can add members, set your meeting schedule, track prayers, and more."
+        ? "create your group to get started - you can add members, set your meeting schedule, track prayers, and more."
         : "you're not in a group yet. ask your group leader for their invite code, then use it to join.")
       +'</div>'
       +(isLeader
@@ -887,7 +887,7 @@ function rMemHome(){
     +(GD.next.time ? '<div class="mh-d">⏰ '+GD.next.time+'</div>' : '')
     +(GD.next.loc ? '<div class="mh-d">📍 '+GD.next.loc+'</div>' : '')
     +'</div>'
-    +(CU.type==='leader'?'<button class="btn btn-a" style="margin-top:16px" onclick="moEditMtg()">edit meeting details</button>':'')
+    +(CU.type==='leader'||CU.type==='ministry'?'<button class="btn btn-a" style="margin-top:16px" onclick="moEditMtg()">edit meeting details</button>':'')
     +'</div>'
     +'<div class="g2">'
     +'<div>'
@@ -899,7 +899,7 @@ function rMemHome(){
       ? '<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:7px">'+GD.study+'</div>'
         +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6"><strong>homework:</strong> '+GD.hw+'</div>'
       : '<div style="font-size:14px;color:var(--muted);padding:8px 0">no study set yet.</div>')
-    +(CU.type==='leader'?'<button class="btn btn-s btn-sm" onclick="moEditStudy()">edit study info</button>':'')
+    +(CU.type==='leader'||CU.type==='ministry'?'<button class="btn btn-s btn-sm" onclick="moEditStudy()">edit study info</button>':'')
     +'</div></div>'
     +'<div>'
     +'<div class="card"><div class="ch"><span class="ct">🙏 recent prayers</span><button class="btn btn-g btn-sm" onclick="nav(\'prayers\')">see all →</button></div>'
@@ -924,9 +924,9 @@ function rNextMtg(){
       +'<div style="font-size:48px;margin-bottom:16px">📅</div>'
       +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no meeting scheduled yet</div>'
       +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto 24px">'
-      +(CU.type==='leader' ? 'create your group first, then set your meeting details here.' : 'your group leader hasn\'t set a meeting time yet - check back soon!')
+      +(CU.type==='leader'||CU.type==='ministry' ? 'create your group first, then set your meeting details here.' : 'your group leader hasn\'t set a meeting time yet - check back soon!')
       +'</div>'
-      +(CU.type==='leader' ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>' : '')
+      +(CU.type==='leader'||CU.type==='ministry' ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>' : '')
       +'</div>';
     return;
   }
@@ -937,7 +937,7 @@ function rNextMtg(){
     +'<div class="mh-d">📍 '+GD.next.loc+'</div>'
     +'<div class="mh-d">🔁 '+GD.freq+'</div>'
     +'</div>'
-    +(CU.type==='leader'?'<button class="btn btn-a" style="margin-top:16px" onclick="moEditMtg()">edit meeting details</button>':'')
+    +(CU.type==='leader'||CU.type==='ministry'?'<button class="btn btn-a" style="margin-top:16px" onclick="moEditMtg()">edit meeting details</button>':'')
     +'</div>'
     +'<div class="g2">'
     +'<div class="card"><div class="ch"><span class="ct">📖 study & homework</span></div>'
@@ -1026,7 +1026,7 @@ function prayerListHtml(list){
       +'<div class="pacts">'
       +'<button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button>'
       +'<span class="pc2" id="pc-'+p.id+'">'+p.cnt+' '+(p.cnt===1?'person':'people')+' praying</span>'
-      +(!p.ans&&CU.type==='leader'?'<button class="btn btn-s btn-sm" onclick="moMarkAns('+p.id+')">mark answered</button>':'')
+      +(!p.ans&&CU.type==='leader'||CU.type==='ministry'?'<button class="btn btn-s btn-sm" onclick="moMarkAns('+p.id+')">mark answered</button>':'')
       +(p.ans?'<span class="badge b-g">✨ answered!</span>':'')
       +'</div></div>';
   }).join('');
@@ -1070,7 +1070,7 @@ function rIcebreaker(){
 // --- SCHEDULE ---
 function rSchedule(){
   var c=document.getElementById('pc');
-  var isLeader=(CU.type==='leader'||CU.type==='ministry');
+  var isLeader=(CU.type==='leader'||CU.type==='ministry'||CU.type==='ministry');
   var schedData = DEMO_MODE ? SCHED : [];
   var myVotes = DEMO_MODE ? votedSlots : new Set();
   // Build the poll options section
@@ -1330,20 +1330,19 @@ function rMembers(){
   // Generate group invite code from group name (simple hash)
   var groupCode = DEMO_MODE ? 'GRP-THUR' : (CU.groupCode || (CU.groupCode = genCode('GRP')));
 
-  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moInviteMember()">+ invite member</button>';
+  document.getElementById('topbar-acts').innerHTML='<button class="btn btn-p btn-sm" onclick="moInviteMember()">🔗 invite code</button>';
 
   if (!DEMO_MODE && members.length === 0) {
-    c.innerHTML='<div class="card" style="margin-bottom:18px;background:var(--brand-p);border-color:var(--brand-l)">'
+    c.innerHTML='<div class="card" style="background:var(--brand-p);border-color:var(--brand-l)">'
       +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 your group invite code</span></div>'
       +'<div style="font-size:28px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:8px">'+groupCode+'</div>'
-      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with people you want to join your group. they\'ll enter it when creating their group member account.</div>'
-      +'<button class="btn btn-p btn-sm" onclick="toast(\'invite code copied! 📋\')">copy code</button>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with anyone you want in your group. they\'ll enter it when creating their groupify account.</div>'
+      +'<button class="btn btn-p btn-sm" onclick="navigator.clipboard.writeText(\''+groupCode+'\');toast(\'code copied! 📋\')">copy code</button>'
       +'</div>'
-      +'<div class="card" style="text-align:center;padding:36px 24px">'
+      +'<div class="card" style="text-align:center;padding:36px 24px;margin-top:18px">'
       +'<div style="font-size:40px;margin-bottom:12px">👥</div>'
       +'<div style="font-size:16px;font-weight:600;color:var(--dark);margin-bottom:8px">no members yet</div>'
-      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:340px;margin:0 auto">share your invite code above or send a direct invite below - members will show up here once they join.</div>'
-      +'<button class="btn btn-p" style="margin-top:18px" onclick="moInviteMember()">📧 send an invite</button>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:340px;margin:0 auto">share your invite code above and members will appear here once they join.</div>'
       +'</div>';
     return;
   }
@@ -1361,18 +1360,22 @@ function rMembers(){
 }
 
 function moInviteMember(){
-  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>📧 invite someone</h2>'
-    +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">send them your invite code to enter when signing up, or enter their email to send a direct invite link.</div>'
-    +'<div class="fg"><label>their email address</label><input type="email" id="inv-email" placeholder="friend@email.com"></div>'
-    +'<div class="fg"><label>personal note (optional)</label><textarea rows="2" placeholder="hey! i\'d love for you to join our group..."></textarea></div>'
-    +'<button class="btn btn-p btn-full" onclick="closeMo();toast(\'invite sent! 📬\')">send invite</button>');
+  var groupCode = DEMO_MODE ? 'GRP-THUR' : (CU.groupCode || (CU.groupCode = genCode('GRP')));
+  openMo('<button class="mc" onclick="closeMo()">✕</button><h2>👥 invite someone to your group</h2>'
+    +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">share your group invite code with anyone you want to join. they\'ll enter it when creating their account on groupify.</div>'
+    +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:20px;text-align:center;margin-bottom:18px">'
+    +'<div style="font-size:12px;color:var(--brand);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">your group invite code</div>'
+    +'<div style="font-size:32px;font-weight:700;color:var(--brand);letter-spacing:3px">'+groupCode+'</div>'
+    +'</div>'
+    +'<button class="btn btn-p btn-full" onclick="navigator.clipboard.writeText(\''+groupCode+'\');toast(\'code copied! 📋\')">copy code</button>'
+    +'<button class="btn btn-g btn-full" style="margin-top:10px" onclick="closeMo()">done</button>');
 }
 
 // --- REMINDERS ---
 function rReminders(){
   var c=document.getElementById('pc');
   var isMinistry = CU.type==='ministry';
-  var isLeader = CU.type==='leader';
+  var isLeader = CU.type==='leader'||CU.type==='ministry';
 
   // Manual send section - different options per role
   var sendToOptions = isMinistry
@@ -1434,23 +1437,16 @@ function rReminders(){
   // Ministry leader invite section at top
   var inviteSection = isMinistry
     ? '<div class="card" style="margin-bottom:18px;background:var(--brand-p);border-color:var(--brand-l)">'
-      +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 your ministry invite code</span></div>'
+      +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 ministry invite code</span></div>'
       +'<div style="font-size:28px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:8px">'+(DEMO_MODE ? 'MIN-DM88' : (CU.minCode || (CU.minCode = genCode('MIN'))))+'</div>'
-      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with group leaders when they sign up - it connects them to your ministry automatically. group members use the group leader\'s separate invite code.</div>'
-      +'<button class="btn btn-p btn-sm" onclick="toast(\'ministry code copied! 📋\')">copy code</button>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with group leaders when they sign up - it connects them to your ministry automatically.</div>'
+      +'<button class="btn btn-p btn-sm" onclick="navigator.clipboard.writeText(\''+(DEMO_MODE?'MIN-DM88':(CU.minCode||''))+'\');toast(\'code copied! 📋\')">copy code</button>'
       +'</div>'
     : '';
 
   c.innerHTML = inviteSection
-    +'<div class="card" style="margin-bottom:18px">'
-    +'<div class="ch"><span class="ct">🔔 send a reminder</span></div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">reminders are sent as emails to the recipients. 📧</div>'
-    +'<div class="fg"><label>send to</label>'
-    +'<select onchange="toggleSpecific(this)">'+sendToOptions+'</select></div>'
-    +specificField
-    +'<div class="fg"><label>reminder type</label><select>'+reminderTypes+'</select></div>'
-    +'<div class="fg"><label>message (optional)</label><textarea rows="3" placeholder="add a personal note..."></textarea></div>'
-    +'<button class="btn btn-p" onclick="toast(\'reminder sent! 📬\')">send reminder</button>'
+    +'<div class="card" style="margin-bottom:18px;background:#FFF8F0;border-color:var(--accent-l)">'
+    +'<div style="font-size:13px;color:var(--accent);line-height:1.6">📧 <strong>email reminders coming soon</strong> - manual email sending will be available in a future update. for now, share your invite code directly with group leaders or members.</div>'
     +'</div>'
     +autoSettings;
 }
