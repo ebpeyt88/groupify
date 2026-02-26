@@ -235,14 +235,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="btn btn-p btn-full" onclick="realSignIn()">sign in</button>
       <div class="lswitch" style="margin-top:14px">don't have an account? <a onclick="showCreateAccount()">create one →</a></div>
       <div class="demo-sep">
-        <p>demo — tap to sign in as:</p>
+        <p>demo - tap to sign in as:</p>
         <button class="demo-btn" onclick="loginAs('ministry')">⛪ ministry leader</button>
         <button class="demo-btn" onclick="loginAs('leader')">👥 group leader</button>
         <button class="demo-btn" onclick="loginAs('member')">🙋 group member</button>
       </div>
     </div>
 
-    <!-- CREATE ACCOUNT: STEP 1 — ROLE -->
+    <!-- CREATE ACCOUNT: STEP 1 - ROLE -->
     <div id="view-ca1" style="display:none">
       <div class="llogo" style="font-size:34px;margin-bottom:4px">groupify</div>
       <div class="ltag">create your account</div>
@@ -280,7 +280,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="lswitch">already have an account? <a onclick="showSignIn()">sign in</a></div>
     </div>
 
-    <!-- CREATE ACCOUNT: STEP 2 — DETAILS -->
+    <!-- CREATE ACCOUNT: STEP 2 - DETAILS -->
     <div id="view-ca2" style="display:none">
       <div class="llogo" style="font-size:34px;margin-bottom:4px">groupify</div>
       <div class="ltag">create your account</div>
@@ -302,7 +302,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="lswitch">already have an account? <a onclick="showSignIn()">sign in</a></div>
     </div>
 
-    <!-- CREATE ACCOUNT: STEP 3 — GROUP SETUP -->
+    <!-- CREATE ACCOUNT: STEP 3 - GROUP SETUP -->
     <div id="view-ca3" style="display:none">
       <div class="llogo" style="font-size:34px;margin-bottom:4px">groupify</div>
       <div class="ltag">create your account</div>
@@ -382,7 +382,7 @@ async function loadUserProfile(user) {
   }
 
   if (!profile) {
-    toast('error loading profile — please try again 😕');
+    toast('error loading profile - please try again 😕');
     var btn = document.querySelector('#view-signin .btn-p');
     if (btn) { btn.textContent = 'sign in'; btn.disabled = false; }
     return;
@@ -433,7 +433,7 @@ async function realSignIn() {
   try {
     // Check Supabase loaded
     if (typeof supabase === 'undefined' || !sb) {
-      toast('connection error — please refresh the page and try again 😕');
+      toast('connection error - please refresh the page and try again 😕');
       btn.textContent = 'sign in'; btn.disabled = false; return;
     }
 
@@ -444,14 +444,14 @@ async function realSignIn() {
     if (error) {
       var msg = error.message || 'unknown error';
       if (msg.includes('Invalid login')) msg = 'incorrect email or password';
-      if (msg.includes('Email not confirmed')) msg = 'please confirm your email first — check your inbox 📬';
+      if (msg.includes('Email not confirmed')) msg = 'please confirm your email first - check your inbox 📬';
       toast('sign in failed: ' + msg + ' 😕');
       btn.textContent = 'sign in'; btn.disabled = false;
       return;
     }
 
     if (!data || !data.user) {
-      toast('something went wrong — please try again 😕');
+      toast('something went wrong - please try again 😕');
       btn.textContent = 'sign in'; btn.disabled = false;
       return;
     }
@@ -497,7 +497,7 @@ function caStep3(){
   if(!fn||!ln){toast('please enter your name 😊');return}
   if(!em||em.indexOf('@')<0){toast('please enter a valid email 📧');return}
   if(pw.length<8){toast('password must be at least 8 characters 🔒');return}
-  if(pw!==pw2){toast("passwords don't match — try again 🔒");return}
+  if(pw!==pw2){toast("passwords don't match - try again 🔒");return}
   // Build step 3 content based on role
   var html='';
   if(caRole==='ministry'){
@@ -509,12 +509,12 @@ function caStep3(){
     html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">set up your group</div>'
       +'<div class="fg"><label>group name</label><input type="text" id="ca-gname" placeholder="e.g. Thursday Night Crew"></div>'
       +'<div class="fg"><label>when did your group start?</label><input type="date" id="ca-gstart" value="'+new Date().toISOString().split('T')[0]+'"></div>'
-      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, set the actual start date — you\'ll instantly earn all your milestone badges!</div>'
+      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, set the actual start date - you\'ll instantly earn all your milestone badges!</div>'
       +'<div class="fg"><label>join an existing ministry? (optional)</label><input type="text" id="ca-mcode" placeholder="enter ministry code if you have one"></div>';
   } else {
     html='<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:16px">join a group</div>'
       +'<div class="fg"><label>group invite code</label><input type="text" id="ca-icode" placeholder="enter the code your leader gave you"></div>'
-      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 don\'t have a code yet? no problem — you can join a group after signing up.</div>'
+      +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 don\'t have a code yet? no problem - you can join a group after signing up.</div>'
       +'<div class="fg"><label>how did you hear about groupify?</label><select><option>my group leader</option><option>my church</option><option>a friend</option><option>online search</option><option>other</option></select></div>';
   }
   document.getElementById('ca3-content').innerHTML=html;
@@ -598,10 +598,10 @@ var GD={
 };
 
 var PRAYERS=[
-  {id:1,au:'Derek R.',txt:"Prayers for my mom's surgery next Tuesday — she's nervous and I want peace for our whole family.",dt:'Feb 22',ans:false,cnt:4,prayed:false},
-  {id:2,au:'Amy C.',txt:'Job interview this Friday — hoping for wisdom and calm confidence.',dt:'Feb 23',ans:false,cnt:7,prayed:true},
+  {id:1,au:'Derek R.',txt:"Prayers for my mom's surgery next Tuesday - she's nervous and I want peace for our whole family.",dt:'Feb 22',ans:false,cnt:4,prayed:false},
+  {id:2,au:'Amy C.',txt:'Job interview this Friday - hoping for wisdom and calm confidence.',dt:'Feb 23',ans:false,cnt:7,prayed:true},
   {id:3,au:'Marcus T.',txt:'Grateful our lease got renewed! God is so faithful. 🙏',dt:'Feb 20',ans:true,anote:'Lease renewed with even better terms!',cnt:12,prayed:false},
-  {id:4,au:'Sarah M.',txt:'Struggling with anxiety lately — please pray for rest and peace in my mind.',dt:'Feb 18',ans:false,cnt:9,prayed:false}
+  {id:4,au:'Sarah M.',txt:'Struggling with anxiety lately - please pray for rest and peace in my mind.',dt:'Feb 18',ans:false,cnt:9,prayed:false}
 ];
 
 var IQ=[
@@ -646,8 +646,8 @@ var RESOURCES=[
   {type:'Bible Study',title:'The Book of James',desc:'A practical look at living out faith in everyday life.',tags:['faith','action','wisdom']},
   {type:'Bible Study',title:'The Book of Philippians',desc:'Joy and contentment even in difficult seasons.',tags:['joy','peace','gratitude']},
   {type:'Video Series',title:"It's Not Supposed to Be This Way",desc:'Lysa TerKeurst on finding unexpected strength when life lets us down.',tags:['hardship','hope']},
-  {type:'Bible Study',title:'Sermon on the Mount',desc:'Matthew 5–7 — Kingdom living as Jesus described it.',tags:['discipleship','character']},
-  {type:'Video Series',title:'The Chosen — Season 1',desc:'Watch and discuss the life of Jesus through the eyes of those who knew him.',tags:['jesus','community']}
+  {type:'Bible Study',title:'Sermon on the Mount',desc:'Matthew 5–7 - Kingdom living as Jesus described it.',tags:['discipleship','character']},
+  {type:'Video Series',title:'The Chosen - Season 1',desc:'Watch and discuss the life of Jesus through the eyes of those who knew him.',tags:['jesus','community']}
 ];
 
 var ROTATION=[
@@ -839,12 +839,12 @@ function rMemHome(){
       +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify, '+CU.name.split(' ')[0]+'!</div>'
       +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto 24px">'
       +(isLeader
-        ? "you're all set up as a group leader. create your group to get started — you can add members, set your meeting schedule, track prayers, and more."
+        ? "you're all set up as a group leader. create your group to get started - you can add members, set your meeting schedule, track prayers, and more."
         : "you're not in a group yet. ask your group leader for their invite code, then use it to join.")
       +'</div>'
       +(isLeader
         ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>'
-        : '<div style="background:var(--brand-p);border-radius:var(--rsm);padding:16px;font-size:14px;color:var(--brand);max-width:320px;margin:0 auto 16px auto">your leader will share a group invite code — enter it when signing up, or ask them to send you a direct invite 🙂</div>')
+        : '<div style="background:var(--brand-p);border-radius:var(--rsm);padding:16px;font-size:14px;color:var(--brand);max-width:320px;margin:0 auto 16px auto">your leader will share a group invite code - enter it when signing up, or ask them to send you a direct invite 🙂</div>')
       +'</div>';
     return;
   }
@@ -878,7 +878,7 @@ function rMemHome(){
     +'<div>'
     +'<div class="card"><div class="ch"><span class="ct">🙏 recent prayers</span><button class="btn btn-g btn-sm" onclick="nav(\'prayers\')">see all →</button></div>'
     +(prayers.length===0
-      ? '<div style="font-size:14px;color:var(--muted);padding:12px 0;text-align:center">no prayers yet — be the first to share one 🙏</div>'
+      ? '<div style="font-size:14px;color:var(--muted);padding:12px 0;text-align:center">no prayers yet - be the first to share one 🙏</div>'
       : prayers.slice(0,2).map(function(p){return '<div class="pi'+(p.ans?' ans':'')+'"><div class="pmeta"><span class="pau">'+p.au+'</span><span class="pdt">'+p.dt+'</span></div><div class="ptxt">'+p.txt.substring(0,80)+(p.txt.length>80?'...':'')+'</div><div class="pacts"><button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button><span class="pc2">'+p.cnt+' praying</span>'+(p.ans?'<span class="badge b-g">✨ answered!</span>':'')+'</div></div>'}).join(''))
     +'</div>'
     +'<div class="card"><div class="ch"><span class="ct">🏆 group stats</span><button class="btn btn-g btn-sm" onclick="nav(\'milestones\')">see all →</button></div>'
@@ -898,7 +898,7 @@ function rNextMtg(){
       +'<div style="font-size:48px;margin-bottom:16px">📅</div>'
       +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">no meeting scheduled yet</div>'
       +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto 24px">'
-      +(CU.type==='leader' ? 'create your group first, then set your meeting details here.' : 'your group leader hasn\'t set a meeting time yet — check back soon!')
+      +(CU.type==='leader' ? 'create your group first, then set your meeting details here.' : 'your group leader hasn\'t set a meeting time yet - check back soon!')
       +'</div>'
       +(CU.type==='leader' ? '<button class="btn btn-p" onclick="moCreateGroup()">+ create my group</button>' : '')
       +'</div>';
@@ -1029,7 +1029,7 @@ function rSchedule(){
     pollHtml='<div style="text-align:center;padding:32px;color:var(--muted)">'
       +'<div style="font-size:36px;margin-bottom:10px">🗓️</div>'
       +'<div style="font-size:14px">no time options yet.</div>'
-      +(isLeader?'<div style="font-size:13px;margin-top:4px">add options below for your group to vote on.</div>':'<div style="font-size:13px;margin-top:4px">your leader hasn\'t added options yet — check back soon!</div>')
+      +(isLeader?'<div style="font-size:13px;margin-top:4px">add options below for your group to vote on.</div>':'<div style="font-size:13px;margin-top:4px">your leader hasn\'t added options yet - check back soon!</div>')
       +'</div>';
   } else {
     pollHtml='<div class="tsg">'
@@ -1125,7 +1125,7 @@ function rAssessment(){
     +'<div style="text-align:center;margin-bottom:26px">'
     +'<div style="font-size:38px;margin-bottom:7px">💚</div>'
     +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:7px">group health check-in</div>'
-    +'<div style="font-size:14px;color:var(--muted);line-height:1.6">this is anonymous — your answers combine with your group\'s to show overall trends. takes about 2 minutes.</div>'
+    +'<div style="font-size:14px;color:var(--muted);line-height:1.6">this is anonymous - your answers combine with your group\'s to show overall trends. takes about 2 minutes.</div>'
     +'</div>'
     +AQ.map(function(q,qi){
       return '<div class="aq"><div class="aqt">'+q.q+'</div>'
@@ -1174,8 +1174,8 @@ function rHDetail(){
     +'<div>'
     +'<div class="card"><div class="ct" style="margin-bottom:12px">🌟 areas of strength</div>'
     +'<div style="font-size:14px;color:var(--mid);line-height:1.7">'
-    +'<p>✅ your group shows strong <strong>scripture engagement</strong> — members find the study time meaningful.</p>'
-    +'<p style="margin-top:9px">✅ <strong>connection and belonging</strong> is high — people genuinely feel they belong here.</p>'
+    +'<p>✅ your group shows strong <strong>scripture engagement</strong> - members find the study time meaningful.</p>'
+    +'<p style="margin-top:9px">✅ <strong>connection and belonging</strong> is high - people genuinely feel they belong here.</p>'
     +'</div></div>'
     +'<div class="card"><div class="ct" style="margin-bottom:12px">🌱 areas to grow</div>'
     +'<div style="font-size:14px;color:var(--mid);line-height:1.7">'
@@ -1183,7 +1183,7 @@ function rHDetail(){
     +'</div></div>'
     +'<div class="card" style="background:var(--brand-p);border-color:var(--brand-l)">'
     +'<div class="ct" style="margin-bottom:11px;color:var(--brand)">💡 coaching tip</div>'
-    +'<div style="font-size:14px;color:var(--brand);line-height:1.7">try dedicating one meeting to discussing what makes your group special — then challenge each member to invite one person in the next 30 days.</div>'
+    +'<div style="font-size:14px;color:var(--brand);line-height:1.7">try dedicating one meeting to discussing what makes your group special - then challenge each member to invite one person in the next 30 days.</div>'
     +'</div>'
     +'</div></div>';
 }
@@ -1292,7 +1292,7 @@ function rMembers(){
       +'<div class="card" style="text-align:center;padding:36px 24px">'
       +'<div style="font-size:40px;margin-bottom:12px">👥</div>'
       +'<div style="font-size:16px;font-weight:600;color:var(--dark);margin-bottom:8px">no members yet</div>'
-      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:340px;margin:0 auto">share your invite code above or send a direct invite below — members will show up here once they join.</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:340px;margin:0 auto">share your invite code above or send a direct invite below - members will show up here once they join.</div>'
       +'<button class="btn btn-p" style="margin-top:18px" onclick="moInviteMember()">📧 send an invite</button>'
       +'</div>';
     return;
@@ -1324,7 +1324,7 @@ function rReminders(){
   var isMinistry = CU.type==='ministry';
   var isLeader = CU.type==='leader';
 
-  // Manual send section — different options per role
+  // Manual send section - different options per role
   var sendToOptions = isMinistry
     ? '<option>all groups in ministry</option><option>all group leaders</option><option>specific group leader</option><option>specific group (leaders + members)</option>'
     : '<option>all group members</option><option>co-leaders only</option><option>a specific member</option>';
@@ -1333,7 +1333,7 @@ function rReminders(){
     ? '<option>upcoming meeting reminder</option><option>fill out group health assessment</option><option>mark attendance</option><option>custom message</option>'
     : '<option>upcoming meeting reminder</option><option>fill out group health assessment</option><option>mark attendance</option><option>custom message</option>';
 
-  // Recipient selector — shows name field when "specific" is chosen
+  // Recipient selector - shows name field when "specific" is chosen
   var specificField = isMinistry
     ? '<div class="fg" id="specific-field" style="display:none"><label>group leader name or email</label><input type="text" placeholder="search by name or email..."></div>'
     : '<div class="fg" id="specific-field" style="display:none"><label>member name</label><input type="text" placeholder="search by name..."></div>';
@@ -1386,7 +1386,7 @@ function rReminders(){
     ? '<div class="card" style="margin-bottom:18px;background:var(--brand-p);border-color:var(--brand-l)">'
       +'<div class="ch"><span class="ct" style="color:var(--brand)">🔗 your ministry invite code</span></div>'
       +'<div style="font-size:28px;font-weight:700;color:var(--brand);letter-spacing:3px;margin-bottom:8px">'+(DEMO_MODE ? 'MIN-DM88' : (CU.minCode || (CU.minCode = genCode('MIN'))))+'</div>'
-      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with group leaders when they sign up — it connects them to your ministry automatically. group members use the group leader\'s separate invite code.</div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">share this code with group leaders when they sign up - it connects them to your ministry automatically. group members use the group leader\'s separate invite code.</div>'
       +'<button class="btn btn-p btn-sm" onclick="toast(\'ministry code copied! 📋\')">copy code</button>'
       +'</div>'
     : '';
@@ -1420,74 +1420,76 @@ function genCode(prefix){
   for(var i=0;i<4;i++) code+=chars[Math.floor(Math.random()*chars.length)];
   return prefix+'-'+code;
 }
+
+var BIBLE_BOOKS=[
   // Old Testament
-  {type:'Old Testament',title:'Genesis',desc:'The beginning of all things — creation, the fall, and God\'s covenant with his people.',tags:['creation','covenant','beginnings']},
+  {type:'Old Testament',title:'Genesis',desc:'The beginning of all things - creation, the fall, and God\'s covenant with his people.',tags:['creation','covenant','beginnings']},
   {type:'Old Testament',title:'Exodus',desc:'God delivers his people from slavery and establishes his covenant at Sinai.',tags:['freedom','covenant','moses']},
   {type:'Old Testament',title:'Leviticus',desc:'Laws and rituals that set Israel apart as a holy people before God.',tags:['holiness','worship','law']},
   {type:'Old Testament',title:'Numbers',desc:'Israel\'s wilderness journey and the cost of faithlessness.',tags:['wilderness','faithfulness','journey']},
-  {type:'Old Testament',title:'Deuteronomy',desc:'Moses\' final words — a call to love God wholeheartedly and obey his commands.',tags:['obedience','love','renewal']},
+  {type:'Old Testament',title:'Deuteronomy',desc:'Moses\' final words - a call to love God wholeheartedly and obey his commands.',tags:['obedience','love','renewal']},
   {type:'Old Testament',title:'Joshua',desc:'God\'s faithfulness as Israel enters and conquers the promised land.',tags:['courage','faithfulness','promise']},
   {type:'Old Testament',title:'Judges',desc:'A cycle of sin, suffering, and salvation in the days before Israel\'s kings.',tags:['sin','redemption','leadership']},
   {type:'Old Testament',title:'Ruth',desc:'A beautiful story of loyalty, love, and redemption.',tags:['loyalty','redemption','love']},
   {type:'Old Testament',title:'1 Samuel',desc:'The rise of Israel\'s monarchy and the life of King David.',tags:['leadership','calling','trust']},
-  {type:'Old Testament',title:'2 Samuel',desc:'David\'s reign — his triumphs, failures, and God\'s enduring grace.',tags:['grace','failure','kingship']},
+  {type:'Old Testament',title:'2 Samuel',desc:'David\'s reign - his triumphs, failures, and God\'s enduring grace.',tags:['grace','failure','kingship']},
   {type:'Old Testament',title:'1 Kings',desc:'Solomon\'s wisdom and the divided kingdom.',tags:['wisdom','obedience','leadership']},
-  {type:'Old Testament',title:'2 Kings',desc:'The fall of Israel and Judah — a warning about unfaithfulness.',tags:['faithfulness','consequences','history']},
+  {type:'Old Testament',title:'2 Kings',desc:'The fall of Israel and Judah - a warning about unfaithfulness.',tags:['faithfulness','consequences','history']},
   {type:'Old Testament',title:'1 Chronicles',desc:'A retelling of Israel\'s history with focus on worship and the Davidic line.',tags:['worship','history','legacy']},
   {type:'Old Testament',title:'2 Chronicles',desc:'The temple, the kings, and the call to return to God.',tags:['worship','repentance','revival']},
   {type:'Old Testament',title:'Ezra',desc:'The return from exile and restoration of worship in Jerusalem.',tags:['restoration','worship','rebuilding']},
   {type:'Old Testament',title:'Nehemiah',desc:'Rebuilding the walls of Jerusalem against opposition.',tags:['leadership','perseverance','rebuilding']},
-  {type:'Old Testament',title:'Esther',desc:'A young woman\'s courage saves her people — God\'s hidden hand in history.',tags:['courage','providence','identity']},
+  {type:'Old Testament',title:'Esther',desc:'A young woman\'s courage saves her people - God\'s hidden hand in history.',tags:['courage','providence','identity']},
   {type:'Old Testament',title:'Job',desc:'Wrestling with suffering, faith, and the mystery of God\'s ways.',tags:['suffering','faith','trust']},
-  {type:'Old Testament',title:'Psalms',desc:'150 songs and prayers covering every human emotion — praise, lament, and trust.',tags:['prayer','worship','emotions']},
-  {type:'Old Testament',title:'Proverbs',desc:'Practical wisdom for everyday life — work, relationships, speech, and more.',tags:['wisdom','practical','everyday life']},
+  {type:'Old Testament',title:'Psalms',desc:'150 songs and prayers covering every human emotion - praise, lament, and trust.',tags:['prayer','worship','emotions']},
+  {type:'Old Testament',title:'Proverbs',desc:'Practical wisdom for everyday life - work, relationships, speech, and more.',tags:['wisdom','practical','everyday life']},
   {type:'Old Testament',title:'Ecclesiastes',desc:'The search for meaning in a world under the sun.',tags:['meaning','purpose','wisdom']},
   {type:'Old Testament',title:'Song of Solomon',desc:'A celebration of love, beauty, and intimacy.',tags:['love','relationships','beauty']},
   {type:'Old Testament',title:'Isaiah',desc:'God\'s holiness, Israel\'s failure, and the coming hope of a Messiah.',tags:['hope','messiah','holiness']},
   {type:'Old Testament',title:'Jeremiah',desc:'A prophet\'s painful calling to speak truth in difficult times.',tags:['perseverance','calling','hardship']},
-  {type:'Old Testament',title:'Lamentations',desc:'Grieving the destruction of Jerusalem — honest prayers in the darkest times.',tags:['grief','lament','hope']},
+  {type:'Old Testament',title:'Lamentations',desc:'Grieving the destruction of Jerusalem - honest prayers in the darkest times.',tags:['grief','lament','hope']},
   {type:'Old Testament',title:'Ezekiel',desc:'Visions, judgment, and the promise of spiritual renewal.',tags:['renewal','vision','restoration']},
-  {type:'Old Testament',title:'Daniel',desc:'Faithful living in a foreign culture — and God\'s sovereign rule over history.',tags:['faithfulness','courage','sovereignty']},
+  {type:'Old Testament',title:'Daniel',desc:'Faithful living in a foreign culture - and God\'s sovereign rule over history.',tags:['faithfulness','courage','sovereignty']},
   {type:'Old Testament',title:'Hosea',desc:'God\'s relentless love for an unfaithful people.',tags:['love','forgiveness','faithfulness']},
   {type:'Old Testament',title:'Joel',desc:'A call to repentance and the promise of God\'s Spirit poured out.',tags:['repentance','spirit','restoration']},
   {type:'Old Testament',title:'Amos',desc:'Justice, righteousness, and care for the poor.',tags:['justice','righteousness','social justice']},
-  {type:'Old Testament',title:'Obadiah',desc:'The shortest book — a warning against pride and injustice.',tags:['pride','justice','humility']},
+  {type:'Old Testament',title:'Obadiah',desc:'The shortest book - a warning against pride and injustice.',tags:['pride','justice','humility']},
   {type:'Old Testament',title:'Jonah',desc:'Running from God, and discovering his scandalous mercy.',tags:['mercy','obedience','grace']},
   {type:'Old Testament',title:'Micah',desc:'What does the Lord require? Justice, mercy, and humility.',tags:['justice','mercy','humility']},
-  {type:'Old Testament',title:'Nahum',desc:'God\'s justice against Nineveh — the oppressor falls.',tags:['justice','sovereignty','comfort']},
+  {type:'Old Testament',title:'Nahum',desc:'God\'s justice against Nineveh - the oppressor falls.',tags:['justice','sovereignty','comfort']},
   {type:'Old Testament',title:'Habakkuk',desc:'Wrestling with God\'s silence in the face of evil.',tags:['faith','doubt','trust']},
-  {type:'Old Testament',title:'Zephaniah',desc:'The day of the Lord — judgment and restoration.',tags:['judgment','restoration','hope']},
+  {type:'Old Testament',title:'Zephaniah',desc:'The day of the Lord - judgment and restoration.',tags:['judgment','restoration','hope']},
   {type:'Old Testament',title:'Haggai',desc:'A call to prioritize God\'s house over our own comfort.',tags:['priorities','obedience','rebuilding']},
   {type:'Old Testament',title:'Zechariah',desc:'Visions of hope and the coming of God\'s king.',tags:['hope','messiah','restoration']},
-  {type:'Old Testament',title:'Malachi',desc:'The final Old Testament voice — a call to return before the messenger comes.',tags:['return','faithfulness','preparation']},
+  {type:'Old Testament',title:'Malachi',desc:'The final Old Testament voice - a call to return before the messenger comes.',tags:['return','faithfulness','preparation']},
   // New Testament
-  {type:'New Testament',title:'Matthew',desc:'Jesus as the promised King — the Sermon on the Mount and the Great Commission.',tags:['jesus','kingdom','discipleship']},
+  {type:'New Testament',title:'Matthew',desc:'Jesus as the promised King - the Sermon on the Mount and the Great Commission.',tags:['jesus','kingdom','discipleship']},
   {type:'New Testament',title:'Mark',desc:'The fast-paced, action-packed gospel of Jesus the servant.',tags:['jesus','service','action']},
   {type:'New Testament',title:'Luke',desc:'Jesus\' compassion for the outsider, the poor, and the lost.',tags:['compassion','inclusion','jesus']},
-  {type:'New Testament',title:'John',desc:'The deep theological gospel — Jesus as the Word, the Light, and the Life.',tags:['jesus','belief','eternal life']},
+  {type:'New Testament',title:'John',desc:'The deep theological gospel - Jesus as the Word, the Light, and the Life.',tags:['jesus','belief','eternal life']},
   {type:'New Testament',title:'Acts',desc:'The birth and spread of the early church through the Holy Spirit.',tags:['spirit','mission','church']},
-  {type:'New Testament',title:'Romans',desc:'The most systematic presentation of the gospel — grace, faith, and transformation.',tags:['gospel','grace','theology']},
-  {type:'New Testament',title:'1 Corinthians',desc:'Practical challenges in a messy church — unity, gifts, love, and resurrection.',tags:['unity','love','community']},
+  {type:'New Testament',title:'Romans',desc:'The most systematic presentation of the gospel - grace, faith, and transformation.',tags:['gospel','grace','theology']},
+  {type:'New Testament',title:'1 Corinthians',desc:'Practical challenges in a messy church - unity, gifts, love, and resurrection.',tags:['unity','love','community']},
   {type:'New Testament',title:'2 Corinthians',desc:'Strength in weakness and the ministry of reconciliation.',tags:['weakness','grace','ministry']},
-  {type:'New Testament',title:'Galatians',desc:'Freedom from the law — salvation by grace through faith alone.',tags:['grace','freedom','faith']},
+  {type:'New Testament',title:'Galatians',desc:'Freedom from the law - salvation by grace through faith alone.',tags:['grace','freedom','faith']},
   {type:'New Testament',title:'Ephesians',desc:'Our identity in Christ and how to live it out in community.',tags:['identity','community','unity']},
   {type:'New Testament',title:'Philippians',desc:'Joy and contentment even in the hardest circumstances.',tags:['joy','contentment','peace']},
   {type:'New Testament',title:'Colossians',desc:'The supremacy of Christ over everything.',tags:['christ','supremacy','fullness']},
   {type:'New Testament',title:'1 Thessalonians',desc:'Encouragement, hope, and the return of Christ.',tags:['hope','encouragement','return']},
   {type:'New Testament',title:'2 Thessalonians',desc:'Standing firm in the face of hardship and false teaching.',tags:['perseverance','truth','endurance']},
-  {type:'New Testament',title:'1 Timothy',desc:'Leading well — instructions for life and leadership in the church.',tags:['leadership','church','character']},
-  {type:'New Testament',title:'2 Timothy',desc:'Paul\'s final words — finish well and hold onto the truth.',tags:['perseverance','legacy','truth']},
+  {type:'New Testament',title:'1 Timothy',desc:'Leading well - instructions for life and leadership in the church.',tags:['leadership','church','character']},
+  {type:'New Testament',title:'2 Timothy',desc:'Paul\'s final words - finish well and hold onto the truth.',tags:['perseverance','legacy','truth']},
   {type:'New Testament',title:'Titus',desc:'Sound doctrine and godly living in every area of life.',tags:['character','leadership','doctrine']},
   {type:'New Testament',title:'Philemon',desc:'Forgiveness, reconciliation, and the radical equality of the gospel.',tags:['forgiveness','reconciliation','grace']},
-  {type:'New Testament',title:'Hebrews',desc:'Jesus as the ultimate high priest — better than anything that came before.',tags:['faith','endurance','jesus']},
-  {type:'New Testament',title:'James',desc:'Faith that works — practical Christianity in everyday life.',tags:['faith','action','wisdom']},
+  {type:'New Testament',title:'Hebrews',desc:'Jesus as the ultimate high priest - better than anything that came before.',tags:['faith','endurance','jesus']},
+  {type:'New Testament',title:'James',desc:'Faith that works - practical Christianity in everyday life.',tags:['faith','action','wisdom']},
   {type:'New Testament',title:'1 Peter',desc:'Hope and holiness for those suffering as strangers in the world.',tags:['suffering','hope','holiness']},
   {type:'New Testament',title:'2 Peter',desc:'Guard against false teaching and grow in grace.',tags:['discernment','growth','truth']},
   {type:'New Testament',title:'1 John',desc:'Assurance of salvation and the command to love one another.',tags:['love','assurance','community']},
-  {type:'New Testament',title:'2 John',desc:'Walking in truth and love — a short letter with a big message.',tags:['truth','love','discernment']},
+  {type:'New Testament',title:'2 John',desc:'Walking in truth and love - a short letter with a big message.',tags:['truth','love','discernment']},
   {type:'New Testament',title:'3 John',desc:'Hospitality, generosity, and supporting God\'s work.',tags:['hospitality','generosity','support']},
-  {type:'New Testament',title:'Jude',desc:'Contend for the faith — a warning against false teachers.',tags:['discernment','truth','perseverance']},
-  {type:'New Testament',title:'Revelation',desc:'The ultimate victory of Christ over evil — hope for the suffering church.',tags:['hope','victory','worship']}
+  {type:'New Testament',title:'Jude',desc:'Contend for the faith - a warning against false teachers.',tags:['discernment','truth','perseverance']},
+  {type:'New Testament',title:'Revelation',desc:'The ultimate victory of Christ over evil - hope for the suffering church.',tags:['hope','victory','worship']}
 ];
 
 // --- RESOURCES ---
@@ -1590,7 +1592,7 @@ function rMinHealth(){
     return;
   }
   c.innerHTML='<div class="card">'
-    +'<div class="ch"><span class="ct">💚 group health — all groups</span></div>'
+    +'<div class="ch"><span class="ct">💚 group health - all groups</span></div>'
     +MGROUPS.map(function(g){return '<div style="padding:14px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><div style="font-weight:600;font-size:14px">'+g.n+'</div><span class="badge '+(g.h>=80?'b-g':g.h>=65?'b-b':'b-o')+'">'+g.h+'%</span></div><div class="hbt"><div class="hbf'+(g.h<65?' low':g.h<80?' med':'')+'" style="width:'+g.h+'%"></div></div>'+(g.h<70?'<div style="font-size:12px;color:var(--accent);margin-top:5px;font-weight:500">⚠️ coaching recommended</div>':'')+'</div>'}).join('')
     +'</div>'
     +'<div class="card"><div class="ch"><span class="ct">assessment settings</span></div>'
@@ -1632,7 +1634,7 @@ function moCreateGroup(){
   openMo('<button class="mc" onclick="closeMo()">✕</button><h2>👥 create your group</h2>'
     +'<div class="fg"><label>group name</label><input type="text" id="cg-name" placeholder="e.g. Thursday Night Crew"></div>'
     +'<div class="fg"><label>when did your group start?</label><input type="date" id="cg-start" value="'+new Date().toISOString().split('T')[0]+'"></div>'
-    +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, enter the real start date — you\'ll instantly earn your milestone badges!</div>'
+    +'<div style="background:var(--brand-p);border-radius:var(--rsm);padding:13px;font-size:13px;color:var(--brand);margin-bottom:16px">💡 if your group started in the past, enter the real start date - you\'ll instantly earn your milestone badges!</div>'
     +'<div class="fg"><label>meeting day</label><select id="cg-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
     +'<div class="fg"><label>meeting time</label><select id="cg-time"><option>6:00 PM</option><option>6:30 PM</option><option>7:00 PM</option><option>7:30 PM</option><option>8:00 PM</option></select></div>'
     +'<button class="btn btn-p btn-full" onclick="saveNewGroup()">create group 🎉</button>');
