@@ -40,7 +40,7 @@ a:hover{text-decoration:underline}
    ============================================================ */
 #s-login{background:linear-gradient(145deg,#1B2D24 0%,#2D6A4F 60%,#52B788 100%);align-items:center;justify-content:center;padding:24px}
 .lcard{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.2)}
-.llogo{font-family:'DM Sans',sans-serif;font-size:46px;font-weight:600;color:var(--brand);text-align:center;margin-bottom:4px;letter-spacing:-1.5px}
+.llogo{font-family:'DM Serif Display',serif;font-size:46px;font-weight:400;color:var(--brand);text-align:center;margin-bottom:4px;letter-spacing:-1px}
 .ltag{text-align:center;color:var(--muted);font-size:14px;margin-bottom:28px}
 .lswitch{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
 
@@ -96,7 +96,7 @@ a:hover{text-decoration:underline}
    APP SHELL - SIDEBAR
    ============================================================ */
 .sidebar{width:256px;background:var(--dark);color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;position:sticky;top:0;height:100vh}
-.sb-logo{padding:24px 22px 16px;font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:-0.5px;font-size:28px;color:var(--brand-l);border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-logo{padding:24px 22px 16px;font-family:'DM Serif Display',serif;font-weight:400;letter-spacing:-0.5px;font-size:28px;color:var(--brand-l);border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-logo small{display:block;font-size:11px;font-weight:400;color:rgba(255,255,255,.3);margin-top:-2px;letter-spacing:0}
 .sb-user{padding:14px 22px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px}
 .u-av{width:36px;height:36px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;color:#fff}
@@ -301,6 +301,60 @@ a:hover{text-decoration:underline}
 .banner-orange{background:#FFF3E0;color:#8B4513;border:1px solid #FDDCCC}
 
 /* ============================================================
+   MOBILE RESPONSIVE
+   ============================================================ */
+.hamburger{display:none;background:transparent;border:none;cursor:pointer;padding:6px;border-radius:var(--rsm);flex-direction:column;gap:5px;align-items:center;justify-content:center}
+.hamburger span{display:block;width:22px;height:2px;background:var(--dark);border-radius:2px;transition:all .25s}
+.hamburger:hover span{background:var(--brand)}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100}
+.mob-overlay.open{display:block}
+
+@media (max-width: 768px) {
+  /* Hide desktop sidebar */
+  .sidebar{display:none;position:fixed;left:0;top:0;height:100vh;z-index:200;transform:translateX(-100%);transition:transform .28s ease}
+  .sidebar.mob-open{display:flex;transform:translateX(0)}
+
+  /* Show hamburger in topbar */
+  .hamburger{display:flex}
+
+  /* Full-width main */
+  #s-app.active{flex-direction:column}
+  .main{width:100%;min-height:100vh}
+
+  /* Tighter content padding */
+  #page-content{padding:16px}
+  .topbar{padding:12px 16px}
+  .topbar h1{font-size:18px}
+
+  /* Stack grids on small screens */
+  .g2,.g3,.g4{grid-template-columns:1fr 1fr}
+  .g4{grid-template-columns:1fr 1fr}
+
+  /* Cards */
+  .card{padding:16px;border-radius:12px}
+
+  /* Milestone grid */
+  .badge-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+
+  /* Login card */
+  .lcard{padding:32px 24px}
+
+  /* Modal */
+  .modal-overlay{align-items:flex-end;padding:0}
+  .modal-box{border-radius:20px 20px 0 0;max-height:92vh;padding:28px 20px}
+}
+
+@media (max-width: 480px) {
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .btn-row{flex-direction:column}
+  .topbar{padding:10px 14px}
+  #page-content{padding:12px}
+  .mhero{padding:18px}
+  .mhero-title{font-size:20px}
+  .iq-text{font-size:17px}
+}
+
+/* ============================================================
    UTILS
    ============================================================ */
 .mb-0{margin-bottom:0!important}
@@ -435,13 +489,21 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
   <!-- MAIN -->
   <div class="main">
     <div class="topbar">
-      <h1 id="page-title">home</h1>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger" id="hamburger" onclick="openMobNav()" aria-label="open menu">
+          <span></span><span></span><span></span>
+        </button>
+        <h1 id="page-title">home</h1>
+      </div>
       <div id="topbar-actions"></div>
     </div>
     <div id="page-content"></div>
   </div>
 
 </div>
+
+<!-- MOBILE NAV OVERLAY -->
+<div class="mob-overlay" id="mob-overlay" onclick="closeMobNav()"></div>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="modalClickOutside(event)">
@@ -506,11 +568,19 @@ var DEMO_PRAYERS = [
   {id:3,au:'Derek R.',txt:'My brother is going through a rough season. Please keep him in your prayers.',dt:'1 week ago',ans:false,cnt:3,prayed:false}
 ];
 
-var DEMO_RESOURCES = [
-  {type:'Video Series',title:'The Chosen - Season 1',desc:'Watch and discuss the life of Jesus through the eyes of those who knew him.',tags:['jesus','community','video']},
-  {type:'Bible Study',title:'Emotionally Healthy Spirituality',desc:'Discover the connection between emotional health and spiritual maturity.',tags:['growth','emotions','spiritual']},
-  {type:'Book',title:'The Ruthless Elimination of Hurry',desc:'A modern guide to slowing down and living fully in the pace of Jesus.',tags:['rest','rhythm','spiritual']}
+// MINISTRY_RESOURCES: shared across all views. Ministry leaders add/remove here.
+// Starts with demo data in demo mode; starts empty for real accounts (populated on add).
+var MINISTRY_RESOURCES = [
+  {id:'mr1',type:'Video Series',title:'The Chosen - Season 1',desc:'Watch and discuss the life of Jesus through the eyes of those who knew him.',tags:['jesus','community','video','discussion','film']},
+  {id:'mr2',type:'Bible Study',title:'Emotionally Healthy Spirituality',desc:'Discover the connection between emotional health and spiritual maturity.',tags:['growth','emotions','spiritual','health','relationships']},
+  {id:'mr3',type:'Book',title:'The Ruthless Elimination of Hurry',desc:'A modern guide to slowing down and living fully in the pace of Jesus.',tags:['rest','rhythm','spiritual','pace','presence']}
 ];
+// For real (non-demo) accounts, start with an empty list
+var REAL_MINISTRY_RESOURCES = [];
+
+function getMinistryResources(){
+  return DEMO ? MINISTRY_RESOURCES : REAL_MINISTRY_RESOURCES;
+}
 
 var DEMO_SCHED = [
   {id:1,day:'Tuesday',date:'March 4',time:'7:30 PM',votes:4},
@@ -520,8 +590,8 @@ var DEMO_SCHED = [
 ];
 
 var DEMO_GD = {
-  name:'Thursday Night Crew',start:'2020-01-15',
-  next:{day:'Thursday',time:'7:30 PM',loc:'Marcus & Jenna\'s',freq:'weekly'},
+  name:'Thursday Night Crew',start:'2022-09-08',
+  next:{day:'Thursday',date:'2026-03-05',time:'7:30 PM',loc:'Marcus & Jenna\'s',freq:'weekly'},
   study:'James: Faith That Works',hw:'Read chapters 3-4. Journal about a time your words caused unintended harm.',
   stats:{meetings:48,answered:12,books:6}
 };
@@ -558,113 +628,458 @@ var IQ = [
 /* ============================================================
    MEMBER ROLES
    ============================================================ */
-var MEMBER_ROLES = ['leader','co-leader','prayer coordinator','service coordinator','study coordinator','host','social coordinator'];
+var MEMBER_ROLES = ['group member','leader','co-leader','prayer coordinator','service coordinator','study coordinator','host','social coordinator'];
 
 /* ============================================================
    ASSESSMENT QUESTIONS
    ============================================================ */
-var AQ = [
+// AQ is the active question set — ministry leaders can edit it
+var AQ_DEFAULT = [
   {q:'How connected do you feel to the other members of your group?',lo:'distant',hi:'deeply connected'},
   {q:'How safe do you feel sharing honestly about your life in this group?',lo:'unsafe',hi:'completely safe'},
   {q:'How engaged is your group in studying scripture together?',lo:'minimal',hi:'fully engaged'},
   {q:'How well does your group support each other through hard times?',lo:'not much',hi:'always there'},
   {q:'How likely are you to invite a friend to join this group?',lo:'not likely',hi:'definitely'}
 ];
+var AQ = JSON.parse(JSON.stringify(AQ_DEFAULT));
 var asmAnswers = {};
+var lastHealthScore = 0;
 
 /* ============================================================
    BADGES / MILESTONES
    ============================================================ */
-var BADGES = [
-  {em:'🌱',n:'first meeting',d:'met for the first time',e:true},
-  {em:'🔟',n:'10 meetings',d:'10 group meetings completed',e:true},
-  {em:'💯',n:'100 meetings',d:'100 group meetings together',e:false},
-  {em:'🙏',n:'prayer warrior',d:'50+ prayers submitted',e:true},
-  {em:'✨',n:'answered prayer',d:'first answered prayer logged',e:true},
-  {em:'📖',n:'bookworm',d:'completed first full book study',e:true},
-  {em:'🗓️',n:'1 year strong',d:'celebrating 1 year together',e:true},
-  {em:'🎉',n:'3 years!',d:'three incredible years together',e:true},
-  {em:'❤️',n:'deep roots',d:'5+ years of doing life together',e:false},
-  {em:'🏆',n:'health champion',d:'scored 90+ on group health',e:false},
-  {em:'🌍',n:'six books',d:'studied 6 books of the Bible',e:true},
-  {em:'🌟',n:'dozen answered',d:'12 answered prayers logged',e:true}
+// Milestone structure:
+// type: 'meetings' | 'years' | 'prayers' | 'answered' | 'books' | 'health' | 'special'
+// threshold: the value needed to earn it (for stat-based types)
+// e: earned (computed at runtime based on actual stats)
+var ALL_MILESTONES = [
+  // --- MEETINGS ---
+  {em:'🌱',n:'first meeting',       d:'held your very first group meeting',         type:'meetings',  threshold:1},
+  {em:'🔥',n:'5 meetings',          d:'five meetings strong!',                      type:'meetings',  threshold:5},
+  {em:'🔟',n:'10 meetings',         d:'double digits — you\'re a real group now',   type:'meetings',  threshold:10},
+  {em:'📅',n:'25 meetings',         d:'25 meetings together',                       type:'meetings',  threshold:25},
+  {em:'🏅',n:'50 meetings',         d:'50 meetings — half a century!',              type:'meetings',  threshold:50},
+  {em:'💯',n:'100 meetings',        d:'100 group meetings together',                type:'meetings',  threshold:100},
+  {em:'🚀',n:'200 meetings',        d:'200 meetings and still going',               type:'meetings',  threshold:200},
+  {em:'⚡',n:'365 meetings',        d:'a meeting a week for seven full years',      type:'meetings',  threshold:365},
+
+  // --- TIME TOGETHER ---
+  {em:'🗓️',n:'1 year strong',       d:'celebrating one full year together',         type:'years',     threshold:1},
+  {em:'🎉',n:'3 years together',    d:'three incredible years doing life together', type:'years',     threshold:3},
+  {em:'❤️',n:'5 year family',       d:'five years — you\'re family now',            type:'years',     threshold:5},
+  {em:'🌳',n:'10 year legacy',      d:'a decade of community — truly rare',         type:'years',     threshold:10},
+  {em:'👑',n:'generational group',  d:'15+ years of faithfulness together',         type:'years',     threshold:15},
+
+  // --- PRAYER ---
+  {em:'🙏',n:'first prayer',        d:'first prayer request shared',                type:'prayers',   threshold:1},
+  {em:'💬',n:'10 prayers',          d:'10 prayer requests submitted',               type:'prayers',   threshold:10},
+  {em:'🕊️',n:'25 prayers',         d:'25 prayers lifted up together',              type:'prayers',   threshold:25},
+  {em:'📿',n:'50 prayers',          d:'50+ prayers submitted — prayer warriors!',   type:'prayers',   threshold:50},
+  {em:'🔔',n:'100 prayers',         d:'100 prayer requests shared as a group',      type:'prayers',   threshold:100},
+  {em:'🌊',n:'250 prayers',         d:'250 prayers — a river of intercession',      type:'prayers',   threshold:250},
+
+  // --- ANSWERED PRAYER ---
+  {em:'✨',n:'first answered prayer',d:'your first prayer marked as answered',      type:'answered',  threshold:1},
+  {em:'🌟',n:'5 answered prayers',  d:'five prayers answered and celebrated',       type:'answered',  threshold:5},
+  {em:'🎯',n:'dozen answered',      d:'12 answered prayers logged — God is good!',  type:'answered',  threshold:12},
+  {em:'🌈',n:'25 answered',         d:'25 answered prayers and counting',           type:'answered',  threshold:25},
+  {em:'🏆',n:'50 answered',         d:'50 answered prayers — a legacy of faith',    type:'answered',  threshold:50},
+
+  // --- BOOKS / STUDIES ---
+  {em:'📖',n:'first study',         d:'completed your first book or study',         type:'books',     threshold:1},
+  {em:'📚',n:'3 studies',           d:'three studies completed together',           type:'books',     threshold:3},
+  {em:'🌍',n:'6 books',             d:'six books of the Bible studied',             type:'books',     threshold:6},
+  {em:'🧠',n:'12 books',            d:'twelve studies — a year\'s worth of depth',  type:'books',     threshold:12},
+  {em:'🎓',n:'26 books',            d:'26 studies — half the New Testament!',       type:'books',     threshold:26},
+  {em:'🏛️',n:'66 books',            d:'all 66 books of the Bible studied',          type:'books',     threshold:66},
+
+  // --- HEALTH ---
+  {em:'💚',n:'health check',        d:'completed your first group health assessment', type:'health',  threshold:60},
+  {em:'⭐',n:'healthy group',       d:'scored 75+ on a group health check-in',       type:'health',  threshold:75},
+  {em:'🏆',n:'health champion',     d:'scored 90+ on a group health check-in',       type:'health',  threshold:90},
+  {em:'💎',n:'elite community',     d:'scored 95+ on a group health check-in',       type:'health',  threshold:95},
+
+  // --- SPECIAL / SPIRIT-LED ---
+  {em:'🕯️',n:'lit a candle',        d:'prayed for someone outside the group',       type:'special',  threshold:null},
+  {em:'🤝',n:'open door',           d:'welcomed a new member into the group',       type:'special',  threshold:null},
+  {em:'🌿',n:'new roots',           d:'hosted your first meeting',                  type:'special',  threshold:null},
+  {em:'🎤',n:'story shared',        d:'a member shared their testimony',            type:'special',  threshold:null},
+  {em:'🌏',n:'kingdom minded',      d:'prayed together for a global cause',         type:'special',  threshold:null},
+  {em:'🎁',n:'generous hearts',     d:'served or gave together as a group',         type:'special',  threshold:null},
+  {em:'🧩',n:'fully committed',     d:'every member attended the same meeting',     type:'special',  threshold:null},
+  {em:'📣',n:'word got out',        d:'a member invited a friend to the group',     type:'special',  threshold:null}
 ];
 
+// Compute which milestones are earned and which are visible (progressive reveal)
+// Track special badge earned state separately so it persists across redraws
+var specialEarned = {};
+
+function computeMilestones(stats, years, healthScore){
+  var m=stats.meetings||0, a=stats.answered||0, b=stats.books||0;
+  // Prayer count: use actual PRAYERS array length (works for both demo and real)
+  var p=PRAYERS.length;
+  var h=healthScore||0;
+
+  // Group milestones by type
+  var byType={};
+  ALL_MILESTONES.forEach(function(ms){
+    if(!byType[ms.type]) byType[ms.type]=[];
+    byType[ms.type].push(ms);
+  });
+
+  var result=[];
+  Object.keys(byType).forEach(function(type){
+    var group=byType[type];
+    if(type==='special'){
+      // Special badges: earned state stored in specialEarned, never auto-reset
+      group.forEach(function(ms){
+        ms.earned = specialEarned[ms.n] || false;
+        result.push(ms);
+      });
+      return;
+    }
+    var val= type==='meetings'?m : type==='years'?years : type==='prayers'?p : type==='answered'?a : type==='books'?b : h;
+    var earnedCount=0;
+    group.forEach(function(ms,i){
+      ms.earned = ms.threshold!==null && val >= ms.threshold;
+      if(ms.earned) earnedCount=i+1;
+    });
+    // Show: all earned + next 2 unearned after the last earned one
+    group.forEach(function(ms,i){
+      if(ms.earned || i<=earnedCount+1) result.push(ms);
+    });
+  });
+  return result;
+}
+
 /* ============================================================
-   BIBLE BOOKS (all 66)
+   BIBLE BOOKS (all 66) — 5 topic tags each
    ============================================================ */
 var BIBLE_BOOKS = [
-  {t:'OT',title:'Genesis',desc:'The beginning of all things - creation, the fall, and God\'s covenant with his people.',tags:['creation','covenant','beginnings']},
-  {t:'OT',title:'Exodus',desc:'God delivers his people from slavery and establishes his covenant at Sinai.',tags:['freedom','covenant','moses']},
-  {t:'OT',title:'Leviticus',desc:'Laws and rituals that set Israel apart as a holy people before God.',tags:['holiness','worship','law']},
-  {t:'OT',title:'Numbers',desc:'Israel\'s wilderness journey and the cost of faithlessness.',tags:['wilderness','faithfulness','journey']},
-  {t:'OT',title:'Deuteronomy',desc:'Moses\' final words - a call to love God wholeheartedly and obey his commands.',tags:['obedience','love','renewal']},
-  {t:'OT',title:'Joshua',desc:'God\'s faithfulness as Israel enters and conquers the promised land.',tags:['courage','faithfulness','promise']},
-  {t:'OT',title:'Judges',desc:'A cycle of sin, suffering, and salvation in the days before Israel\'s kings.',tags:['sin','redemption','leadership']},
-  {t:'OT',title:'Ruth',desc:'A beautiful story of loyalty, love, and redemption.',tags:['loyalty','redemption','love']},
-  {t:'OT',title:'1 Samuel',desc:'The rise of Israel\'s monarchy and the calling of King David.',tags:['leadership','calling','trust']},
-  {t:'OT',title:'2 Samuel',desc:'David\'s reign - his triumphs, failures, and God\'s enduring grace.',tags:['grace','failure','kingship']},
-  {t:'OT',title:'1 Kings',desc:'Solomon\'s wisdom and the divided kingdom.',tags:['wisdom','obedience','leadership']},
-  {t:'OT',title:'2 Kings',desc:'The fall of Israel and Judah - a warning about unfaithfulness.',tags:['faithfulness','consequences','history']},
-  {t:'OT',title:'1 Chronicles',desc:'A retelling of Israel\'s history with a focus on worship and the temple.',tags:['worship','history','temple']},
-  {t:'OT',title:'2 Chronicles',desc:'From Solomon\'s glory to the exile - the importance of following God.',tags:['revival','worship','consequences']},
-  {t:'OT',title:'Ezra',desc:'The return from exile and rebuilding of the temple.',tags:['restoration','worship','community']},
-  {t:'OT',title:'Nehemiah',desc:'Rebuilding Jerusalem\'s walls and renewing the covenant community.',tags:['leadership','restoration','prayer']},
-  {t:'OT',title:'Esther',desc:'God\'s providential protection of his people through courage and faith.',tags:['courage','providence','identity']},
-  {t:'OT',title:'Job',desc:'Wrestling with suffering and encountering God\'s sovereignty.',tags:['suffering','sovereignty','faith']},
-  {t:'OT',title:'Psalms',desc:'150 songs of praise, lament, and trust - the prayer book of the Bible.',tags:['worship','prayer','emotion']},
-  {t:'OT',title:'Proverbs',desc:'Practical wisdom for everyday life rooted in the fear of the Lord.',tags:['wisdom','practical','character']},
-  {t:'OT',title:'Ecclesiastes',desc:'Searching for meaning and finding that life\'s purpose is rooted in God.',tags:['meaning','purpose','wisdom']},
-  {t:'OT',title:'Song of Solomon',desc:'A celebration of love, intimacy, and the beauty of relationship.',tags:['love','marriage','relationship']},
-  {t:'OT',title:'Isaiah',desc:'Prophecies of judgment and hope - pointing toward the coming Messiah.',tags:['prophecy','hope','messiah']},
-  {t:'OT',title:'Jeremiah',desc:'A prophet\'s heartbreak over Israel\'s unfaithfulness and God\'s coming restoration.',tags:['faithfulness','hope','lament']},
-  {t:'OT',title:'Lamentations',desc:'Raw grief over Jerusalem\'s destruction and a prayer for God\'s mercy.',tags:['grief','mercy','lament']},
-  {t:'OT',title:'Ezekiel',desc:'Visions of God\'s glory and the promise of a renewed Israel.',tags:['prophecy','restoration','glory']},
-  {t:'OT',title:'Daniel',desc:'Faithfulness under pressure and God\'s sovereignty over all kingdoms.',tags:['faithfulness','sovereignty','prophecy']},
-  {t:'OT',title:'Hosea',desc:'God\'s unfailing love for an unfaithful people - a picture of grace.',tags:['grace','love','restoration']},
-  {t:'OT',title:'Joel',desc:'A call to repentance and the promise of God\'s Spirit poured out.',tags:['repentance','spirit','restoration']},
-  {t:'OT',title:'Amos',desc:'Justice for the poor and a warning to those who exploit the vulnerable.',tags:['justice','humility','warning']},
-  {t:'OT',title:'Obadiah',desc:'A short prophecy against pride and a reminder that God defends his people.',tags:['pride','justice','deliverance']},
-  {t:'OT',title:'Jonah',desc:'Running from God and discovering his relentless grace and mercy.',tags:['grace','mercy','missions']},
-  {t:'OT',title:'Micah',desc:'Act justly, love mercy, walk humbly - the heart of what God requires.',tags:['justice','humility','mercy']},
-  {t:'OT',title:'Nahum',desc:'God\'s judgment on Nineveh and comfort for those who trust in him.',tags:['justice','comfort','sovereignty']},
-  {t:'OT',title:'Habakkuk',desc:'Honest questions and deep trust - learning to live by faith.',tags:['faith','trust','questions']},
-  {t:'OT',title:'Zephaniah',desc:'Warning of judgment and the joy of God singing over his people.',tags:['joy','judgment','restoration']},
-  {t:'OT',title:'Haggai',desc:'A call to prioritize God\'s house and trust his provision.',tags:['priorities','faithfulness','worship']},
-  {t:'OT',title:'Zechariah',desc:'Visions of hope and the coming King who will reign in peace.',tags:['hope','messiah','prophecy']},
-  {t:'OT',title:'Malachi',desc:'The final Old Testament call to return to God before the coming of Elijah.',tags:['return','faithfulness','giving']},
-  {t:'NT',title:'Matthew',desc:'Jesus as the fulfillment of Old Testament prophecy - the King has come.',tags:['jesus','kingdom','fulfillment']},
-  {t:'NT',title:'Mark',desc:'The action-packed gospel of Jesus - servant, healer, and Son of God.',tags:['jesus','action','servant']},
-  {t:'NT',title:'Luke',desc:'A careful account of Jesus - his compassion for the poor and the outsider.',tags:['jesus','compassion','grace']},
-  {t:'NT',title:'John',desc:'Jesus as the Word of God - believe and have life in his name.',tags:['jesus','belief','eternal life']},
-  {t:'NT',title:'Acts',desc:'The Holy Spirit-empowered birth and spread of the early church.',tags:['spirit','church','missions']},
-  {t:'NT',title:'Romans',desc:'The deep roots of the gospel - grace, faith, and life in the Spirit.',tags:['gospel','grace','theology']},
-  {t:'NT',title:'1 Corinthians',desc:'Addressing division, gifts, and love in a messy but beloved church.',tags:['love','gifts','unity']},
-  {t:'NT',title:'2 Corinthians',desc:'Paul\'s vulnerability and the strength that comes through weakness.',tags:['vulnerability','strength','ministry']},
-  {t:'NT',title:'Galatians',desc:'Freedom from the law through grace - you are fully loved in Christ.',tags:['grace','freedom','identity']},
-  {t:'NT',title:'Ephesians',desc:'The riches of life in Christ and how they shape every relationship.',tags:['identity','unity','relationships']},
-  {t:'NT',title:'Philippians',desc:'Joy in every circumstance - contentment, peace, and pressing onward.',tags:['joy','contentment','peace']},
-  {t:'NT',title:'Colossians',desc:'Christ is supreme over all things - let him fill every part of your life.',tags:['christ','supremacy','fullness']},
-  {t:'NT',title:'1 Thessalonians',desc:'Encouragement to live faithfully while waiting for Christ\'s return.',tags:['hope','return','encouragement']},
-  {t:'NT',title:'2 Thessalonians',desc:'Standing firm in the faith while awaiting the Day of the Lord.',tags:['perseverance','hope','end times']},
-  {t:'NT',title:'1 Timothy',desc:'Practical guidance for leading and organizing a healthy church.',tags:['leadership','church','practical']},
-  {t:'NT',title:'2 Timothy',desc:'Paul\'s final charge - preach the word and finish the race strong.',tags:['perseverance','preaching','legacy']},
-  {t:'NT',title:'Titus',desc:'Sound teaching and godly living in every area of life.',tags:['character','leadership','practical']},
-  {t:'NT',title:'Philemon',desc:'A short letter about forgiveness, reconciliation, and Christian brotherhood.',tags:['forgiveness','reconciliation','grace']},
-  {t:'NT',title:'Hebrews',desc:'Jesus is greater - better covenant, better priest, better hope.',tags:['jesus','faith','perseverance']},
-  {t:'NT',title:'James',desc:'Faith that works - practical Christianity lived out in everyday life.',tags:['faith','works','practical']},
-  {t:'NT',title:'1 Peter',desc:'Hope and endurance for those suffering for their faith.',tags:['suffering','hope','identity']},
-  {t:'NT',title:'2 Peter',desc:'Guarding against false teaching and growing in grace and knowledge.',tags:['discernment','growth','warning']},
-  {t:'NT',title:'1 John',desc:'Love one another - walking in the light and assurance of salvation.',tags:['love','assurance','fellowship']},
-  {t:'NT',title:'2 John',desc:'A brief charge to walk in love and truth and guard against deception.',tags:['truth','love','discernment']},
-  {t:'NT',title:'3 John',desc:'Encouragement for faithful workers and a warning against pride.',tags:['hospitality','faithfulness','character']},
-  {t:'NT',title:'Jude',desc:'Contend for the faith and resist those who distort God\'s grace.',tags:['discernment','perseverance','warning']},
-  {t:'NT',title:'Revelation',desc:'The ultimate victory of Christ and the hope of a renewed creation.',tags:['hope','victory','end times']}
+  {t:'OT',title:'Genesis',desc:'The beginning of all things - creation, the fall, and God\'s covenant with his people.',tags:['creation','covenant','beginnings','identity','family']},
+  {t:'OT',title:'Exodus',desc:'God delivers his people from slavery and establishes his covenant at Sinai.',tags:['freedom','covenant','moses','deliverance','law']},
+  {t:'OT',title:'Leviticus',desc:'Laws and rituals that set Israel apart as a holy people before God.',tags:['holiness','worship','law','sacrifice','purity']},
+  {t:'OT',title:'Numbers',desc:'Israel\'s wilderness journey and the cost of faithlessness.',tags:['wilderness','faithfulness','journey','community','obedience']},
+  {t:'OT',title:'Deuteronomy',desc:'Moses\' final words - a call to love God wholeheartedly and obey his commands.',tags:['obedience','love','renewal','covenant','legacy']},
+  {t:'OT',title:'Joshua',desc:'God\'s faithfulness as Israel enters and conquers the promised land.',tags:['courage','faithfulness','promise','victory','obedience']},
+  {t:'OT',title:'Judges',desc:'A cycle of sin, suffering, and salvation in the days before Israel\'s kings.',tags:['sin','redemption','leadership','cycles','deliverance']},
+  {t:'OT',title:'Ruth',desc:'A beautiful story of loyalty, love, and redemption.',tags:['loyalty','redemption','love','faithfulness','family']},
+  {t:'OT',title:'1 Samuel',desc:'The rise of Israel\'s monarchy and the calling of King David.',tags:['leadership','calling','trust','kingship','transition']},
+  {t:'OT',title:'2 Samuel',desc:'David\'s reign - his triumphs, failures, and God\'s enduring grace.',tags:['grace','failure','kingship','consequences','restoration']},
+  {t:'OT',title:'1 Kings',desc:'Solomon\'s wisdom and the divided kingdom.',tags:['wisdom','obedience','leadership','idolatry','consequences']},
+  {t:'OT',title:'2 Kings',desc:'The fall of Israel and Judah - a warning about unfaithfulness.',tags:['faithfulness','consequences','history','judgment','exile']},
+  {t:'OT',title:'1 Chronicles',desc:'A retelling of Israel\'s history with a focus on worship and the temple.',tags:['worship','history','temple','legacy','identity']},
+  {t:'OT',title:'2 Chronicles',desc:'From Solomon\'s glory to the exile - the importance of following God.',tags:['revival','worship','consequences','reform','prayer']},
+  {t:'OT',title:'Ezra',desc:'The return from exile and rebuilding of the temple.',tags:['restoration','worship','community','obedience','rebuilding']},
+  {t:'OT',title:'Nehemiah',desc:'Rebuilding Jerusalem\'s walls and renewing the covenant community.',tags:['leadership','restoration','prayer','perseverance','community']},
+  {t:'OT',title:'Esther',desc:'God\'s providential protection of his people through courage and faith.',tags:['courage','providence','identity','boldness','protection']},
+  {t:'OT',title:'Job',desc:'Wrestling with suffering and encountering God\'s sovereignty.',tags:['suffering','sovereignty','faith','questions','endurance']},
+  {t:'OT',title:'Psalms',desc:'150 songs of praise, lament, and trust - the prayer book of the Bible.',tags:['worship','prayer','emotion','praise','lament']},
+  {t:'OT',title:'Proverbs',desc:'Practical wisdom for everyday life rooted in the fear of the Lord.',tags:['wisdom','practical','character','relationships','choices']},
+  {t:'OT',title:'Ecclesiastes',desc:'Searching for meaning and finding that life\'s purpose is rooted in God.',tags:['meaning','purpose','wisdom','contentment','legacy']},
+  {t:'OT',title:'Song of Solomon',desc:'A celebration of love, intimacy, and the beauty of relationship.',tags:['love','marriage','relationship','intimacy','beauty']},
+  {t:'OT',title:'Isaiah',desc:'Prophecies of judgment and hope - pointing toward the coming Messiah.',tags:['prophecy','hope','messiah','justice','comfort']},
+  {t:'OT',title:'Jeremiah',desc:'A prophet\'s heartbreak over Israel\'s unfaithfulness and God\'s coming restoration.',tags:['faithfulness','hope','lament','calling','perseverance']},
+  {t:'OT',title:'Lamentations',desc:'Raw grief over Jerusalem\'s destruction and a prayer for God\'s mercy.',tags:['grief','mercy','lament','suffering','hope']},
+  {t:'OT',title:'Ezekiel',desc:'Visions of God\'s glory and the promise of a renewed Israel.',tags:['prophecy','restoration','glory','judgment','spirit']},
+  {t:'OT',title:'Daniel',desc:'Faithfulness under pressure and God\'s sovereignty over all kingdoms.',tags:['faithfulness','sovereignty','prophecy','courage','prayer']},
+  {t:'OT',title:'Hosea',desc:'God\'s unfailing love for an unfaithful people - a picture of grace.',tags:['grace','love','restoration','forgiveness','covenant']},
+  {t:'OT',title:'Joel',desc:'A call to repentance and the promise of God\'s Spirit poured out.',tags:['repentance','spirit','restoration','prayer','hope']},
+  {t:'OT',title:'Amos',desc:'Justice for the poor and a warning to those who exploit the vulnerable.',tags:['justice','humility','warning','poverty','obedience']},
+  {t:'OT',title:'Obadiah',desc:'A short prophecy against pride and a reminder that God defends his people.',tags:['pride','justice','deliverance','humility','nations']},
+  {t:'OT',title:'Jonah',desc:'Running from God and discovering his relentless grace and mercy.',tags:['grace','mercy','missions','obedience','repentance']},
+  {t:'OT',title:'Micah',desc:'Act justly, love mercy, walk humbly - the heart of what God requires.',tags:['justice','humility','mercy','prophecy','character']},
+  {t:'OT',title:'Nahum',desc:'God\'s judgment on Nineveh and comfort for those who trust in him.',tags:['justice','comfort','sovereignty','judgment','trust']},
+  {t:'OT',title:'Habakkuk',desc:'Honest questions and deep trust - learning to live by faith.',tags:['faith','trust','questions','suffering','worship']},
+  {t:'OT',title:'Zephaniah',desc:'Warning of judgment and the joy of God singing over his people.',tags:['joy','judgment','restoration','hope','singing']},
+  {t:'OT',title:'Haggai',desc:'A call to prioritize God\'s house and trust his provision.',tags:['priorities','faithfulness','worship','obedience','provision']},
+  {t:'OT',title:'Zechariah',desc:'Visions of hope and the coming King who will reign in peace.',tags:['hope','messiah','prophecy','restoration','vision']},
+  {t:'OT',title:'Malachi',desc:'The final Old Testament call to return to God before the coming of Elijah.',tags:['return','faithfulness','giving','covenant','repentance']},
+  {t:'NT',title:'Matthew',desc:'Jesus as the fulfillment of Old Testament prophecy - the King has come.',tags:['jesus','kingdom','fulfillment','teaching','discipleship']},
+  {t:'NT',title:'Mark',desc:'The action-packed gospel of Jesus - servant, healer, and Son of God.',tags:['jesus','action','servant','miracles','urgency']},
+  {t:'NT',title:'Luke',desc:'A careful account of Jesus - his compassion for the poor and the outsider.',tags:['jesus','compassion','grace','prayer','inclusion']},
+  {t:'NT',title:'John',desc:'Jesus as the Word of God - believe and have life in his name.',tags:['jesus','belief','eternal life','love','signs']},
+  {t:'NT',title:'Acts',desc:'The Holy Spirit-empowered birth and spread of the early church.',tags:['spirit','church','missions','boldness','community']},
+  {t:'NT',title:'Romans',desc:'The deep roots of the gospel - grace, faith, and life in the Spirit.',tags:['gospel','grace','theology','salvation','transformation']},
+  {t:'NT',title:'1 Corinthians',desc:'Addressing division, gifts, and love in a messy but beloved church.',tags:['love','gifts','unity','church','holiness']},
+  {t:'NT',title:'2 Corinthians',desc:'Paul\'s vulnerability and the strength that comes through weakness.',tags:['vulnerability','strength','ministry','suffering','generosity']},
+  {t:'NT',title:'Galatians',desc:'Freedom from the law through grace - you are fully loved in Christ.',tags:['grace','freedom','identity','law','spirit']},
+  {t:'NT',title:'Ephesians',desc:'The riches of life in Christ and how they shape every relationship.',tags:['identity','unity','relationships','calling','spiritual warfare']},
+  {t:'NT',title:'Philippians',desc:'Joy in every circumstance - contentment, peace, and pressing onward.',tags:['joy','contentment','peace','humility','perseverance']},
+  {t:'NT',title:'Colossians',desc:'Christ is supreme over all things - let him fill every part of your life.',tags:['christ','supremacy','fullness','theology','transformation']},
+  {t:'NT',title:'1 Thessalonians',desc:'Encouragement to live faithfully while waiting for Christ\'s return.',tags:['hope','return','encouragement','holiness','community']},
+  {t:'NT',title:'2 Thessalonians',desc:'Standing firm in the faith while awaiting the Day of the Lord.',tags:['perseverance','hope','end times','work','faithfulness']},
+  {t:'NT',title:'1 Timothy',desc:'Practical guidance for leading and organizing a healthy church.',tags:['leadership','church','practical','character','doctrine']},
+  {t:'NT',title:'2 Timothy',desc:'Paul\'s final charge - preach the word and finish the race strong.',tags:['perseverance','preaching','legacy','courage','mentorship']},
+  {t:'NT',title:'Titus',desc:'Sound teaching and godly living in every area of life.',tags:['character','leadership','practical','doctrine','community']},
+  {t:'NT',title:'Philemon',desc:'A short letter about forgiveness, reconciliation, and Christian brotherhood.',tags:['forgiveness','reconciliation','grace','equality','relationships']},
+  {t:'NT',title:'Hebrews',desc:'Jesus is greater - better covenant, better priest, better hope.',tags:['jesus','faith','perseverance','covenant','worship']},
+  {t:'NT',title:'James',desc:'Faith that works - practical Christianity lived out in everyday life.',tags:['faith','works','practical','speech','wisdom']},
+  {t:'NT',title:'1 Peter',desc:'Hope and endurance for those suffering for their faith.',tags:['suffering','hope','identity','holiness','submission']},
+  {t:'NT',title:'2 Peter',desc:'Guarding against false teaching and growing in grace and knowledge.',tags:['discernment','growth','warning','knowledge','patience']},
+  {t:'NT',title:'1 John',desc:'Love one another - walking in the light and assurance of salvation.',tags:['love','assurance','fellowship','truth','obedience']},
+  {t:'NT',title:'2 John',desc:'A brief charge to walk in love and truth and guard against deception.',tags:['truth','love','discernment','hospitality','warning']},
+  {t:'NT',title:'3 John',desc:'Encouragement for faithful workers and a warning against pride.',tags:['hospitality','faithfulness','character','truth','community']},
+  {t:'NT',title:'Jude',desc:'Contend for the faith and resist those who distort God\'s grace.',tags:['discernment','perseverance','warning','faith','mercy']},
+  {t:'NT',title:'Revelation',desc:'The ultimate victory of Christ and the hope of a renewed creation.',tags:['hope','victory','end times','worship','perseverance']}
 ];
 
 /* ============================================================
-   NAVIGATION CONFIG
+   BIBLE STUDIES
+   Each book has sessions: { title, reading, questions:[5] }
+   Hand-crafted for key books; auto-generated for the rest.
+   Ministry leaders can edit any of these in-place.
    ============================================================ */
+var BIBLE_STUDIES = {
+  'James': {
+    sessions:[
+      {title:'Faith That Works',reading:'James 1:1–18',questions:['James says trials produce steadfastness (v.3). Describe a trial in your own life that ultimately grew something good in you — what did it produce?','What does it mean practically to "ask God for wisdom" (v.5)? When is the last time you genuinely did that before making a decision?','James contrasts the person who doubts with the person who trusts (v.6–8). In what area of your life do you find it hardest to fully trust God right now?','Verses 9–11 flip the world\'s values upside-down — the humble is lifted, the rich will fade. How does this challenge the way you think about success or security?','James says every good gift comes from the Father (v.17). What is one gift in your life you\'ve been taking for granted? How can you receive it with more gratitude?']},
+      {title:'Doers of the Word',reading:'James 1:19–2:13',questions:['James tells us to be "quick to hear, slow to speak, slow to anger" (1:19). Which of those three is hardest for you personally, and why?','What does "pure religion" look like according to James 1:27? How does your daily life reflect or fall short of this description?','James takes favoritism very seriously (2:1–4). What forms does favoritism take in modern life — and in the church? Have you ever been on the receiving end of it?','The "royal law" is to love your neighbor as yourself (2:8). Who is your hardest neighbor to love right now, and what would love actually look like toward them?','James says mercy triumphs over judgment (2:13). Share a time when someone showed you mercy when you deserved judgment. How did it change you?']},
+      {title:'Faith and Works',reading:'James 2:14–3:12',questions:['James asks, "Can faith save him?" if it has no works (2:14). What does a living, active faith look like in your everyday week — not just on Sundays?','Abraham\'s faith was demonstrated by action (2:21–23). What is one step of obedience you\'ve been putting off that would be evidence of your faith right now?','James says the tongue is like a small rudder that steers a whole ship (3:3–4). What patterns in your speech — at home, at work, online — most need God\'s transformation?','He says we use the same tongue to praise God and curse people (3:9–10). Reflect honestly: where does the disconnect show up most in your own speech?','If our words reveal our hearts, what do your most common words reveal about what is really going on inside you?']},
+      {title:'Wisdom from Above',reading:'James 3:13–4:17',questions:['James describes two kinds of wisdom — earthly and from above (3:15–17). Give a real example of each. Which kind are you operating from most in a current situation?','Quarrels come from "passions at war within us" (4:1). What unmet desire or fear tends to show up most in your conflicts with others?','James says we don\'t have because we don\'t ask, or we ask with wrong motives (4:2–3). How would you honestly describe your current prayer life — its frequency and its focus?','The call to "draw near to God" (4:8) is personal and active. What is one concrete step you could take this week to draw nearer to God?','James warns against boasting about tomorrow (4:13–16). How does a "Lord willing" posture change the way you make plans, have ambitions, and talk about the future?']},
+      {title:'Patience and Prayer',reading:'James 5',questions:['James ends with a call to patient waiting (5:7–8). What are you currently waiting on God for, and how are you doing emotionally in that waiting?','The prayer of a righteous person is "powerful and effective" (5:16). What does Elijah\'s example (5:17–18) tell you about what kind of person God answers — and does that encourage or convict you?','James calls the elders to pray over the sick (5:14–15). What would it look like for your group to take healing prayer more seriously — not as a formula, but as genuine faith?','Confessing sins to one another (5:16) is vulnerable and countercultural. What makes this hard in community, and what would need to be true about your group for it to happen?','James began by talking about trials and ends with restoring those who have wandered (5:19–20). Who in your life might be wandering that you could gently move toward this week?']}
+    ]
+  },
+  'Philippians': {
+    sessions:[
+      {title:'Joy in Every Circumstance',reading:'Philippians 1:1–26',questions:['Paul writes from prison and is genuinely joyful (v.4). What is your honest relationship with joy right now — is it present, absent, or something you have to fight for?','Paul says "to live is Christ, to die is gain" (v.21). What does that declaration mean to you personally? Does your life reflect that kind of single-focus?','He says his chains have "advanced the gospel" (v.12). Can you think of a constraint or hardship in your own life that God has used to open unexpected doors?','Paul prays that their love would "abound more and more in knowledge and discernment" (v.9). What is the difference between love that feels good and love that is wise?','How does having an eternal perspective (v.21–23) change the way you face hard days, disappointments, or unfair situations?']},
+      {title:'The Mind of Christ',reading:'Philippians 1:27–2:18',questions:['Paul urges them to "stand firm in one spirit" (1:27). What does unity in your group, church, or family actually require from you — not just in feeling, but in action?','The humility described in 2:3–4 is radical: consider others more significant than yourself. Where do you feel the most resistance to this in your own life?','The Christ hymn (2:6–11) describes Jesus going from glory to servant to exalted. What does his downward journey before exaltation say about the way God works in our lives?','Paul says to "work out your salvation with fear and trembling" (2:12). What does this active, ongoing nature of faith look like practically for you in this season?','He calls them to shine as lights in a crooked generation (2:15). Where in your daily life do you have the most opportunity to be a visible light right now?']},
+      {title:'Pressing Forward',reading:'Philippians 3',questions:['Paul lists his impressive credentials and calls them "rubbish" compared to knowing Christ (3:8). What things do you tend to put your confidence in that might need the same reclassification?','He says he hasn\'t arrived but presses on (3:12–14). What does "pressing on" look like for you spiritually in this current season? What are you reaching toward?','Paul warns about people whose "god is their belly" and whose minds are on earthly things (3:19). What earthly thing most competes for your attention and heart right now?','Our citizenship is in heaven (3:20). How does that truth change how you relate to culture, politics, and the pursuit of comfort and belonging here?','Who in your life models the kind of mature faith Paul describes in this chapter? What specific quality in them do you want to imitate?']},
+      {title:'The Peace That Passes Understanding',reading:'Philippians 4',questions:['Paul says to "rejoice always" (4:4) — not sometimes. Is there a circumstance in your life right now where rejoicing feels impossible? What would it look like to try anyway?','"Be anxious for nothing" (4:6) is one of the most challenging commands in Scripture. What are you most anxious about right now, and have you brought it to God in prayer with thanksgiving?','The peace that "passes understanding" (4:7) is supernatural. Share a time when you experienced a peace that didn\'t make logical sense given your circumstances.','Verse 8 gives us a mental diet — whatever is true, noble, right, pure, lovely. Honestly, what are you feeding your mind most consistently through media and thought patterns?','Paul says he has learned contentment in all circumstances (4:11). What is the hardest situation in which you need to learn contentment right now, and what would that look like?']}
+    ]
+  },
+  'Romans': {
+    sessions:[
+      {title:'The Gospel We Need',reading:'Romans 1:1–32',questions:['Paul says he is "not ashamed of the gospel" (v.16). When do you find yourself most tempted to water it down, avoid it, or be embarrassed by it?','The gospel reveals "the righteousness of God" (v.17). Before you knew the gospel, what did you think righteousness meant? How has that understanding changed?','Paul says humanity has "exchanged the glory of God" for lesser things (v.23). What are the modern equivalents of this exchange — what do people (and you) tend to worship instead of God?','The list in 1:29–31 is uncomfortable because it\'s so recognizable. Which items on that list do you see most commonly celebrated in culture today?','If everyone has seen evidence of God in creation (v.20) and is without excuse, how does that shape your approach to sharing your faith with people who claim they\'ve never encountered God?']},
+      {title:'No One Is Righteous',reading:'Romans 2:1–3:31',questions:['Romans 2:1 says that when we judge others we condemn ourselves because we do the same things. Where do you most judge others for things you are guilty of yourself?','Paul describes a person who knows the law perfectly but doesn\'t live it (2:17–24). What is the gap between your stated beliefs and your actual daily life?','The real Jew, Paul says, is one who is inwardly transformed (2:28–29). What does inward transformation — rather than outward performance — look like in practice for you?','"All have sinned and fall short" (3:23) puts every human on equal footing. How does this truth change the way you look at people you consider very different from you — morally, socially, spiritually?','Justification is a gift through Jesus (3:24). Do you tend to live as someone who has received this gift freely, or do you still function as though you need to earn it?']},
+      {title:'Justified by Faith',reading:'Romans 4–5',questions:['Abraham believed God and it was credited as righteousness (4:3) — before circumcision or the law. What does this tell us about how faith has always worked in God\'s economy?','Romans 4:18 says Abraham hoped "against hope." Describe a situation in your own life where you have had to hope against hope. What kept you going?','Paul says suffering produces perseverance → character → hope (5:3–4). Looking back, where have you seen this progression actually work itself out in your life?','"While we were still sinners, Christ died for us" (5:8). How does the timing of this gift — before we cleaned up, before we believed — affect how you receive and extend grace to others?','Adam brought sin and death; Christ brought grace and life (5:15–17). In what ways do you still live under Adam\'s story rather than Christ\'s?']},
+      {title:'Dead to Sin, Alive to God',reading:'Romans 6–7',questions:['We are "dead to sin" (6:2) — yet we don\'t always feel dead to it. What is the difference between positional truth and experiential reality, and how do you close that gap?','Paul says we are "slaves" to whatever we obey (6:16). What do your patterns of behavior reveal about what actually has mastery over you?','Romans 7:15 — "I do not do what I want, but I do the very thing I hate" — is one of the most honest verses in Scripture. Where do you most identify with this struggle right now?','Paul\'s anguished "Who will deliver me?" (7:24) is met immediately with "Thanks be to God through Jesus Christ" (7:25). How does the gospel interrupt your spiral of self-condemnation?','If the law could diagnose the problem but not fix it (7:7–12), what does that tell us about the limits of rules, willpower, and behavior modification as tools for transformation?']},
+      {title:'Life in the Spirit',reading:'Romans 8',questions:['There is "no condemnation" for those in Christ (8:1). Is condemnation — from God, from others, or from yourself — something you still carry? What would it look like to set it down?','The Spirit who raised Jesus from the dead lives in you (8:11). What does it mean practically to live by that power rather than by willpower?','"All things work together for good" (8:28) is not a promise that all things are good, but that God works through them. Share an example from your life where you have seen this.','Nothing can separate us from the love of God (8:38–39). What things tend to make you feel most separated or distant from God — and how does this passage answer that?','Romans 8 moves from "no condemnation" to "nothing can separate us." What would it look like to live with that kind of settled security in your identity this week?']},
+      {title:'Living Sacrifices',reading:'Romans 12–15',questions:['Offer your body as a "living sacrifice" (12:1) — holy and pleasing to God. What does daily, bodily surrender look like in your actual schedule, habits, and choices?','Don\'t be conformed to the world; be transformed by the renewing of your mind (12:2). Where is your mind most shaped by the world\'s categories right now?','Romans 12:9–21 is a portrait of love in action. Which item on that list feels most natural to you, and which feels most foreign?','Paul says to "bless those who persecute you" and "not repay evil for evil" (12:14,17). Bring a real situation to mind. How does this instruction land?','Chapters 14–15 are about strong and weak believers getting along. Where does your group or church have the most tension around secondary issues, and how do these chapters speak to it?']}
+    ]
+  },
+  'John': {
+    sessions:[
+      {title:'The Word Became Flesh',reading:'John 1',questions:['John opens with "In the beginning was the Word" — deliberately echoing Genesis 1. What does it mean to you that creation and redemption have the same author?','Jesus is described as "the true light, which gives light to everyone" (v.9). What does that mean for people who have never heard the gospel explicitly?','John the Baptist said "He must increase, but I must decrease" (3:30, though implied here in 1:27). Where in your life do you most need to make more room for Jesus and less for yourself?','Philip simply said "Come and see" (v.46) to Nathanael\'s skepticism. Who in your life could you invite to simply "come and see" — without needing to have all the answers first?','Jesus called his first disciples with two words: "Follow me" (v.43). What does following Jesus cost you in your specific context right now — relationally, professionally, or personally?']},
+      {title:'Signs and New Birth',reading:'John 2–3',questions:['At the wedding in Cana, Jesus\' first miracle was providing more wine at a party (2:1–11). What does this tell you about the kind of God Jesus reveals — and does it match your mental picture of him?','The temple cleansing (2:13–22) shows a passionate, confrontational Jesus. Are you more comfortable with the gentle Jesus or this Jesus? What does that preference reveal?','Nicodemus came "at night" (3:2). What are the things in your life that you tend to bring to Jesus only in private, or that you\'re reluctant to be seen as needing?','Jesus says you must be "born of water and Spirit" (3:5). What evidence in your life shows that a spiritual rebirth has happened — that you are a genuinely new person?','"God so loved the world" (3:16) — the whole world. How does the scope of God\'s love challenge the limits you put on who deserves grace, mercy, or the gospel?']},
+      {title:'Living Water',reading:'John 4–5',questions:['The woman at the well had five husbands (4:18) and Jesus initiated a conversation with her — crossing every social boundary of the day. Who are the people in your life that you might be avoiding in similar ways?','Jesus offered her "living water" so she would never thirst again (4:14). What are the things you currently run to for satisfaction that leave you thirsty again? What does it look like to drink from Jesus instead?','The disciples were surprised Jesus was talking to a woman (4:27). How do your cultural assumptions about who matters or who is worth your time get challenged by Jesus\' example?','Jesus healed a man who had been sick for 38 years (5:5). He asked, "Do you want to be healed?" Is there a place in your life where you\'re not sure you actually want to change?','The religious leaders persecuted Jesus for healing on the Sabbath (5:16). Where do you see religious routine or rule-keeping being valued more than actual human flourishing?']},
+      {title:'Bread of Life',reading:'John 6',questions:['After feeding 5,000, the crowd followed Jesus for more bread (6:26). What are your primary motivations for following Jesus — and are they focused on his gifts or on him?','"I am the bread of life" (6:35). What would it mean practically to come to Jesus and not hunger? What does it look like to make him your daily source rather than a weekly visit?','Many disciples walked away when the teaching got hard (6:66). Jesus asked the twelve, "Do you want to go too?" (6:67). How would you honestly answer that question in your current season?','Peter\'s answer was "Lord, to whom shall we go? You have the words of eternal life" (6:68). Has there been a moment in your faith where you reached a similar conclusion? What brought you there?','The crowd wanted to make Jesus king by force (6:15) on their own terms. Where are you most tempted to follow a version of Jesus who serves your agenda rather than the real one?']},
+      {title:'I Am',reading:'John 8–10',questions:['"I am the light of the world" (8:12) — not a light, but the light. What areas of your thinking, decision-making, or relationships most need the light of Jesus right now?','Jesus said the truth will "set you free" (8:32). What truth do you know that you are not yet free from — because you know it but haven\'t fully believed or received it?','The Good Shepherd "lays down his life for the sheep" (10:11). How does it change your experience of everyday life to know that your shepherd is not running away, but running toward you?','Jesus said his sheep "know his voice" (10:4). How do you currently practice listening to God? What makes it easy or hard to hear him in the noise of your life?','The Pharisees were trying to stone Jesus and accusing him of blasphemy (10:31–33). What are the things people most commonly use to dismiss Jesus today — and how do you respond?']},
+      {title:'Resurrection and Glory',reading:'John 11–12',questions:['Jesus wept at Lazarus\'s tomb (11:35), even knowing he was about to raise him. What does the fact that Jesus weeps with us — not just fix things for us — mean for how you bring grief to him?','Martha said "I know he will rise again in the resurrection on the last day" (11:24) — true but distant. Jesus replied "I am the resurrection." What is the difference between believing a doctrine and trusting a person?','Mary anointed Jesus\' feet with expensive perfume (12:3). Where in your life are you holding back your most extravagant devotion — time, money, reputation — from Jesus?','Jesus said "unless a grain of wheat falls into the earth and dies, it remains alone" (12:24). What needs to die in your life right now for something new to grow?','The crowd shouted "Hosanna" on Palm Sunday but called for crucifixion days later (12:13). What are the ways your own praise of Jesus is conditional or circumstantial?']},
+      {title:'The Upper Room',reading:'John 13–14',questions:['Jesus washed his disciples\' feet — including Judas (13:1–17). How does it feel to know that Jesus served someone he knew would betray him? What does that teach us about serving people in our own lives?','The "new commandment" is to love one another as Jesus loved — sacrificially, without conditions (13:34). What makes this kind of love different from natural affection, and who in your life are you being called to love this way?','"Let not your hearts be troubled" (14:1) was spoken to people about to experience devastating loss. What does it mean to have peace that is not dependent on circumstances?','Jesus says "I am the way, the truth, and the life" (14:6). The exclusivity of this claim is offensive to many. How do you hold it with both conviction and compassion in conversation?','The promise of the Holy Spirit as "another Helper" (14:16) means the disciples wouldn\'t be alone. How aware are you of the Spirit\'s presence day-to-day? What would it mean to live more consciously with him?']},
+      {title:'The Vine and the Resurrection',reading:'John 15–21',questions:['Jesus says "I am the vine; you are the branches" (15:5). Fruit doesn\'t come from effort — it comes from staying connected. What does it look like to "abide" in Jesus in a practical, daily way?','He says "Greater love has no one than this, that someone lay down his life for his friends" (15:13). What is one relationship in your life where love is calling you to a real sacrifice or cost?','Peter denied Jesus three times and Jesus restored him three times (21:15–19). Have you experienced restoration after failure? What made it possible — or what is preventing it for you right now?','Jesus\' final question to Peter was "Do you love me?" — not "Are you qualified?" or "Have you fixed your mistakes?" What does this tell you about what Jesus values most?','John says the world couldn\'t contain all the books about what Jesus did (21:25). After studying the Gospel of John, what is the one thing about Jesus that most changes how you see him?']}
+    ]
+  },
+  'Genesis': {
+    sessions:[
+      {title:'In the Beginning',reading:'Genesis 1:1–2:25',questions:['God created everything and called it "very good" (1:31). What does it mean for your life to see the physical world — your body, your work, the earth — as inherently good and worthy of care?','Humans are made in the "image of God" (1:26–27). What does that mean practically? How does it change the way you see yourself and the people around you — especially difficult ones?','God rested on the seventh day (2:2–3). Rest is built into the fabric of creation. What does Sabbath rest look like in your life right now, and what makes it hard to practice?','The man and woman were "naked and not ashamed" (2:25) — complete vulnerability without fear. What would it take for your closest relationships to have that quality? What prevents it?','Creation was spoken into existence by God\'s word (1:3). What does that say about the power of words — God\'s and ours — to create, shape, and call things into being?']},
+      {title:'The Fall and Its Fractures',reading:'Genesis 3–4',questions:['The serpent\'s first move was to question what God said: "Did God actually say...?" (3:1). Where do you most notice your own internal questioning of what God has clearly said?','Adam and Eve hid from God after sinning (3:8). What do you tend to hide from God, or what makes you want to avoid him when you feel guilty or ashamed?','God\'s response to the fall included both judgment and mercy — clothing them (3:21) and promising a redeemer (3:15). What does this dual response tell you about the character of God?','Cain asked "Am I my brother\'s keeper?" (4:9) — the oldest attempt to avoid responsibility for others. Where are you most tempted to ask that same question in your own life?','Sin is described as crouching at the door, "desiring to have" Cain, but he must "rule over it" (4:7). What patterns of sin are crouching at your door right now, and what does ruling over them require?']},
+      {title:'The Flood and a New Beginning',reading:'Genesis 6–9',questions:['God was "grieved" by human wickedness (6:6) — an emotional response. What does it tell you about God that he grieves over sin rather than just judging it coolly?','Noah did "all that God commanded him" (6:22) in an era when no one else was. What does it cost to obey God when everyone around you is going in the opposite direction?','God made a covenant with Noah and all living creatures (9:9–11). The rainbow is a reminder of that promise. How do you use physical reminders to keep God\'s promises present in your daily life?','After the flood, Noah got drunk and there was family shame (9:20–23). Even the most faithful people fail. How do you handle the disappointing failures of people you respect or look up to?','The flood narrative is about both judgment and rescue. How do you hold both realities together in your understanding of God — that he is both a God of justice and a God who saves?']},
+      {title:'Abraham: The Father of Faith',reading:'Genesis 12, 15, 17, 22',questions:['God told Abram to "go" without telling him where (12:1). Have you ever sensed God calling you to take a step of obedience without knowing where it leads? What happened?','God promised Abram descendants as numerous as the stars (15:5) when he had no children. How do you hold onto a promise from God when your circumstances completely contradict it?','Abraham laughed when God promised him a son at age 99 (17:17). God didn\'t rebuke the laughter. What does this tell you about bringing honest, even incredulous, reactions to God?','The binding of Isaac (22) is one of the most difficult passages in the Bible. What do you think God was testing — and what does Abraham\'s obedience reveal about the nature of trust?','Genesis 22:14: "The Lord will provide." Where do you need to see God provide something in your life right now that feels impossible? How do you hold that hope while you wait?']},
+      {title:'Jacob: The Wrestler',reading:'Genesis 25, 27–28, 32–33',questions:['Jacob and Esau struggled together in the womb (25:22) and Jacob grabbed Esau\'s heel at birth (25:26). How do patterns established in a family system continue to shape people even into adulthood?','Jacob deceived his father to steal his brother\'s blessing (27). Is there a relationship in your life where you\'ve gotten something through deception or manipulation? What has that cost you?','At Bethel, Jacob saw the ladder to heaven and heard God\'s promise (28:10–17). Has there been a moment in your life where God broke through and you said "Surely God is in this place"?','Jacob wrestled with God and wouldn\'t let go until he received a blessing (32:26). What does this picture of persistent, grasping, wrestling prayer say about how God wants us to come to him?','After 20 years, Jacob feared meeting Esau (33). But Esau ran to him and embraced him (33:4). What broken relationship in your life might need the kind of initiated reconciliation Esau models here?']},
+      {title:'Joseph: Betrayal to Redemption',reading:'Genesis 37, 39–41, 45, 50',questions:['Joseph was thrown into a pit by his own brothers (37:24). Have you experienced betrayal by people close to you? What did you do with that pain, and how has it shaped you?','Joseph was falsely accused and imprisoned (39:20), yet the Lord was "with Joseph" (39:21). How do you hold onto the presence of God in seasons that feel like unjust punishment?','Pharaoh gave Joseph a platform he couldn\'t have imagined from the prison floor (41:41). How has God ever prepared you through hardship for an opportunity you couldn\'t have handled without it?','Joseph wept when he finally revealed himself to his brothers (45:2). What does his response — no accusation, only tears and grace — tell you about what genuine forgiveness looks like?','Joseph\'s famous words: "You intended to harm me, but God intended it for good" (50:20). Is there a painful chapter of your story that you are beginning to see God was weaving toward something good?']}
+    ]
+  },
+  'Psalms': {
+    sessions:[
+      {title:'Honest with God',reading:'Psalms 22, 42, 88',questions:['Psalm 22 begins "My God, my God, why have you forsaken me?" — the cry Jesus quoted from the cross. Have you ever felt abandoned by God? What did you do with that feeling?','The psalmist in Psalm 42 talks to his own soul: "Why are you cast down, O my soul?" (v.5). What does it mean to preach truth to yourself when your emotions are telling you something different?','Psalm 88 is the darkest psalm — it ends without resolution, in darkness (v.18). What does the fact that this psalm is in the Bible tell you about whether God welcomes our unanswered grief?','These psalms name suffering honestly rather than sanitizing it. How does your prayer life compare — do you bring your raw, unfiltered feelings to God, or do you tend to "tidy up" your prayers?','Where in your life right now do you most need to move from pretending to God toward being fully honest with him? What would that prayer actually sound like?']},
+      {title:'Praise and Worship',reading:'Psalms 8, 19, 100, 150',questions:['Psalm 8 moves from wonder at creation to wonder at humanity: "What is man that you are mindful of him?" (v.4). When is the last time you were genuinely awestruck — by nature, by life, by God?','Psalm 19 says creation "declares the glory of God" (v.1) without words. Where in the created world do you most easily encounter God? How often do you make space for that?','Psalm 100 calls all the earth to worship. What does it mean that worship is a command, not just a feeling? How do you worship when you don\'t feel like it?','Psalm 150 ends the whole book with everything that breathes praising God. What does a life of praise — not just occasional, but constant — actually look like in your day-to-day context?','Choose one line from these psalms that you want to carry into this week. Share it and explain why it matters to you right now.']},
+      {title:'Trust and Refuge',reading:'Psalms 23, 27, 46, 91',questions:['Psalm 23 is the most famous psalm. Which phrase in it is most meaningful to you right now — "still waters," "valley of the shadow of death," "my cup overflows"? Why?','Psalm 27:1 — "The Lord is my light and my salvation; whom shall I fear?" Fear is a dominant emotion in modern life. What are you most afraid of, and how does this psalm speak to it?','Psalm 46 says "God is our refuge and strength, a very present help in trouble" (v.1). Then it says "Be still, and know that I am God" (v.10). What would it look like to be still this week — truly?','Psalm 91 promises protection, presence, and rescue. Have you experienced this in a tangible way? Are there times when it seemed like these promises weren\'t true?','What is the difference between refuge that means "hiding from problems" and refuge that means "finding strength to face them"? Which kind of refuge are you looking for from God right now?']},
+      {title:'Forgiveness and Restoration',reading:'Psalms 32, 51, 130',questions:['Psalm 32:3–4 describes the physical toll of hidden, unconfessed sin: "my bones wasted away." Have you ever experienced the weight of guilt that isn\'t confessed? What did it feel like?','Psalm 51 is David\'s prayer after his adultery with Bathsheba. He asks for a "clean heart" and a "right spirit" (v.10). What is the relationship between genuine repentance and real transformation?','David says "Create in me a clean heart, O God" (51:10) — using the word bara, the same word for creation in Genesis 1. What does it mean that restoration is described as a creative act?','Psalm 130:4 says "with you there is forgiveness, that you may be feared." Why does forgiveness produce reverence rather than taking God for granted? How does that work in your own heart?','Which of these three psalms most speaks to where you are right now? Read one verse from it aloud and tell the group why it matters to you today.']},
+      {title:'Wisdom for Life',reading:'Psalms 1, 37, 73, 119:1–32',questions:['Psalm 1 contrasts the blessed person with the wicked through one key image: what you meditate on. What do you spend the most mental bandwidth on in an average day?','Psalm 37:4 says "Delight yourself in the Lord, and he will give you the desires of your heart." Is this a promise or a transformation? What does it mean for the "desires of your heart" to change?','Psalm 73 is the great crisis of faith psalm — the writer almost falls because the wicked seem to be winning (v.2–3). What injustice or inequity most tempts you toward cynicism or bitterness?','The psalmist says his footing was restored when he "entered the sanctuary" (73:17) and gained an eternal perspective. How does shifting your perspective change what currently frustrates or discourages you?','Psalm 119 is the longest chapter in the Bible — all about God\'s word. What role does Scripture actually play in your daily life, and what would it look like for it to play the role the psalmist describes?']},
+      {title:'Lament and Hope',reading:'Psalms 3, 13, 34, 103',questions:['Psalm 13 asks "How long, O Lord?" four times in two verses. Is "how long?" a prayer you have prayed? What is the thing in your life right now that makes you ask that?','Psalm 34:18 says "The Lord is near to the brokenhearted." Not the put-together, not the joyful — the brokenhearted. Who around you is brokenhearted right now, and what does this truth call you to do?','Psalm 34:19 says "Many are the afflictions of the righteous, but the Lord delivers him out of them all." This doesn\'t say afflictions won\'t come — it says God delivers through them. How does that distinction matter?','Psalm 103 calls us to "forget not all his benefits" (v.2) and then lists them. What are the specific benefits of knowing God that you are most at risk of forgetting in your current season?','Looking back over this Psalms study: what is the biggest shift in how you think about prayer, honesty with God, or the life of faith that you want to carry forward?']}
+    ]
+  }
+};
+
+// Book lengths for auto-generating session counts
+var BOOK_SESSION_COUNTS = {
+  'Genesis':6,'Exodus':5,'Leviticus':3,'Numbers':4,'Deuteronomy':4,
+  'Joshua':4,'Judges':4,'Ruth':3,'1 Samuel':5,'2 Samuel':4,
+  '1 Kings':4,'2 Kings':4,'1 Chronicles':3,'2 Chronicles':3,
+  'Ezra':3,'Nehemiah':3,'Esther':3,'Job':5,'Psalms':6,
+  'Proverbs':4,'Ecclesiastes':3,'Song of Solomon':3,
+  'Isaiah':6,'Jeremiah':6,'Lamentations':3,'Ezekiel':5,'Daniel':4,
+  'Hosea':3,'Joel':2,'Amos':3,'Obadiah':2,'Jonah':3,'Micah':3,
+  'Nahum':2,'Habakkuk':2,'Zephaniah':2,'Haggai':2,'Zechariah':3,'Malachi':2,
+  'Matthew':7,'Mark':5,'Luke':7,'John':8,'Acts':6,
+  'Romans':6,'1 Corinthians':5,'2 Corinthians':4,'Galatians':3,'Ephesians':4,
+  'Philippians':4,'Colossians':3,'1 Thessalonians':3,'2 Thessalonians':2,
+  '1 Timothy':3,'2 Timothy':3,'Titus':2,'Philemon':2,'Hebrews':5,
+  'James':5,'1 Peter':3,'2 Peter':2,'1 John':3,'2 John':1,'3 John':1,
+  'Jude':2,'Revelation':6
+};
+
+// Generate a basic study plan for books without hand-crafted content
+function generateStudy(book){
+  var meta=BIBLE_BOOKS.find(function(b){return b.title===book});
+  if(!meta) return null;
+  var numSessions=BOOK_SESSION_COUNTS[book]||3;
+  // Simple chapter divisions (approximate)
+  var sessions=[];
+  for(var i=0;i<numSessions;i++){
+    var sessionNum=i+1;
+    sessions.push({
+      title:'Session '+sessionNum+' — '+book,
+      reading:book+' (Part '+sessionNum+' of '+numSessions+')',
+      questions:[
+        'What stood out most to you in this passage, and why do you think it caught your attention?',
+        'What does this passage reveal about the character or nature of God? How does that affect your understanding of him?',
+        'Is there a command, warning, or invitation in this text that applies directly to your life right now? What would obedience look like?',
+        'What is the hardest thing about this passage — the thing that challenges, confuses, or unsettles you? Sit with it together as a group.',
+        'What is one thing from today\'s passage that you want to carry into this week — a truth to hold onto, a change to make, or a prayer to pray?'
+      ]
+    });
+  }
+  return {sessions:sessions, generated:true};
+}
+
+// Get study for a book — custom if available, auto-generated otherwise
+function getStudy(book){
+  if(BIBLE_STUDIES[book]) return BIBLE_STUDIES[book];
+  var generated=generateStudy(book);
+  if(generated) BIBLE_STUDIES[book]=generated; // cache it
+  return generated;
+}
+
+// Current study guide view state
+var studyGuideBook=null;
+var studyGuideFrom=null; // 'group' or 'ministry'
+
+function viewStudyGuide(book, fromPage){
+  studyGuideBook=book;
+  studyGuideFrom=fromPage||'resources';
+  var study=getStudy(book);
+  if(!study){toast('study not found');return;}
+  var bookMeta=BIBLE_BOOKS.find(function(b){return b.title===book})||{desc:'',tags:[]};
+  var canEdit=CU&&CU.type==='ministry';
+
+  document.getElementById('page-title').textContent=book+' — study guide';
+  topAction(
+    (canEdit?'<button class="btn btn-g btn-sm" style="margin-right:8px" onclick="modalEditStudyGuide(\''+book.replace(/'/g,"\\'")+'\')">✏️ edit guide</button>':'')
+    +'<button class="btn btn-s btn-sm" onclick="goPage(\''+studyGuideFrom+'\')">← back</button>'
+  );
+
+  var sessionsHtml=study.sessions.map(function(s,si){
+    return '<div class="card" style="margin-bottom:18px">'
+      +'<div class="card-header">'
+      +'<div>'
+      +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--brand);margin-bottom:3px">session '+(si+1)+' of '+study.sessions.length+'</div>'
+      +'<div class="card-title">'+s.title+'</div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-top:3px">📖 '+s.reading+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="border-top:1px solid var(--border);padding-top:14px">'
+      +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px">discussion questions</div>'
+      +s.questions.map(function(q,qi){
+        return '<div style="margin-bottom:14px;display:flex;gap:12px">'
+          +'<div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--brand-p);color:var(--brand);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px">'+(qi+1)+'</div>'
+          +'<div style="font-size:14px;color:var(--dark);line-height:1.7;padding-top:4px">'+q+'</div>'
+          +'</div>';
+      }).join('')
+      +'</div>'
+      +(isLeader()?'<div style="padding-top:4px"><button class="btn btn-s btn-sm" onclick="setStudyFromGuide(\''+book.replace(/'/g,"\\'")+'\')" >📖 use this as my current study</button></div>':'')
+      +'</div>';
+  }).join('');
+
+  pc('<div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,var(--brand-p),#f8fff9);border-color:var(--brand-l)">'
+    +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--brand);margin-bottom:6px">'+bookMeta.t+' · '+study.sessions.length+'-session study</div>'
+    +'<div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark);margin-bottom:8px">'+book+'</div>'
+    +'<div style="font-size:14px;color:var(--mid);line-height:1.6;margin-bottom:12px">'+bookMeta.desc+'</div>'
+    +'<div class="res-tags">'+bookMeta.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
+    +(study.generated?'<div class="banner banner-orange" style="margin-top:14px;margin-bottom:0">⚠️ This is an auto-generated outline with general discussion questions. '+(canEdit?'Click <strong>✏️ edit guide</strong> to customize the readings and questions for your groups.':'A ministry leader can edit and customize this guide.')+'</div>':'')
+    +'</div>'
+    +sessionsHtml);
+}
+
+function setStudyFromGuide(book){
+  if(!GD) GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  GD.study=book;
+  toast('"'+book+'" set as current study 📖');
+}
+
+function modalEditStudyGuide(book){
+  var study=getStudy(book);
+  if(!study){toast('study not found');return;}
+
+  var html=mClose()+'<h2>✏️ '+book+'</h2>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">edit sessions, readings, and discussion questions below. changes apply to all groups in your ministry.</div>';
+
+  study.sessions.forEach(function(s,si){
+    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;margin-bottom:12px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--brand)">session '+(si+1)+'</div>'
+      +(study.sessions.length>1?'<button onclick="deleteStudySession(\''+book.replace(/'/g,"\\'")+'\','+si+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 4px">✕ remove</button>':'')
+      +'</div>'
+      +'<div class="fg"><label>session title</label>'
+      +'<input type="text" id="es-title-'+si+'" value="'+s.title.replace(/"/g,'&quot;').replace(/'/g,"&#39;")+'" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:9px 12px;font-family:inherit;font-size:14px;background:#fff"></div>'
+      +'<div class="fg"><label>reading assignment</label>'
+      +'<input type="text" id="es-reading-'+si+'" value="'+s.reading.replace(/"/g,'&quot;').replace(/'/g,"&#39;")+'" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:9px 12px;font-family:inherit;font-size:14px;background:#fff"></div>'
+      +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:10px 0 8px">discussion questions</div>'
+      +s.questions.map(function(q,qi){
+        return '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start">'
+          +'<div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--brand-p);color:var(--brand);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:9px">'+(qi+1)+'</div>'
+          +'<textarea id="es-q-'+si+'-'+qi+'" rows="2" style="flex:1;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff;resize:vertical;line-height:1.5">'+q.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</textarea>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  });
+
+  html+='<button class="btn btn-s btn-full" style="margin-bottom:12px" onclick="addStudySession(\''+book.replace(/'/g,"\\'")+'\')">+ add session</button>'
+    +'<button class="btn btn-p btn-full" onclick="saveStudyEdits(\''+book.replace(/'/g,"\\'")+'\')">save all changes</button>';
+  openModal(html);
+}
+
+function deleteStudySession(book, si){
+  var study=getStudy(book);
+  if(!study||study.sessions.length<=1){toast('a study needs at least one session');return;}
+  // Save any edits first so we don\'t lose typed content
+  saveStudyEditsToMemory(book, study);
+  study.sessions.splice(si,1);
+  modalEditStudyGuide(book);
+}
+
+function addStudySession(book){
+  var study=getStudy(book);
+  if(!study) return;
+  saveStudyEditsToMemory(book, study);
+  study.sessions.push({
+    title:'New Session',
+    reading:book+' (reading TBD)',
+    questions:['Question 1','Question 2','Question 3','Question 4','Question 5']
+  });
+  study.generated=false;
+  modalEditStudyGuide(book);
+  setTimeout(function(){
+    var box=document.querySelector('.modal-box');
+    if(box) box.scrollTop=box.scrollHeight;
+  },50);
+}
+
+// Helper: read current form values into the study object without closing modal
+function saveStudyEditsToMemory(book, study){
+  if(!study) return;
+  study.sessions.forEach(function(s,si){
+    var tEl=document.getElementById('es-title-'+si);
+    var rEl=document.getElementById('es-reading-'+si);
+    if(tEl) s.title=tEl.value;
+    if(rEl) s.reading=rEl.value;
+    s.questions=s.questions.map(function(q,qi){
+      var el=document.getElementById('es-q-'+si+'-'+qi);
+      return el?el.value:q;
+    });
+  });
+}
+
+function saveStudyEdits(book){
+  var study=getStudy(book);
+  if(!study) return;
+  saveStudyEditsToMemory(book, study);
+  study.generated=false;
+  closeModal();
+  toast('study guide updated ✅');
+  viewStudyGuide(book, studyGuideFrom||'resources');
+}
 var NAV_CONFIG = {
   ministry: [
     {section:'my ministry'},
@@ -753,6 +1168,21 @@ function isLeader(){
   return CU && (CU.type==='leader'||CU.type==='ministry');
 }
 
+// Given a JS day-of-week number (0=Sun), find the next occurrence date string
+function nextDateForDay(targetDay){
+  var d=new Date();
+  var diff=(targetDay-d.getDay()+7)%7||7;
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().split('T')[0];
+}
+
+// Format a date string nicely: "2026-03-06" → "Thursday, March 6"
+function fmtDate(ds){
+  if(!ds) return '';
+  var d=new Date(ds+'T00:00:00');
+  return d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+}
+
 /* ============================================================
    TOAST
    ============================================================ */
@@ -778,6 +1208,19 @@ function closeModal(){
 }
 function modalClickOutside(e){
   if(e.target===document.getElementById('modal-overlay')) closeModal();
+}
+
+/* ============================================================
+   MOBILE NAVIGATION
+   ============================================================ */
+function openMobNav(){
+  document.getElementById('sb-nav') && document.querySelector('.sidebar').classList.add('mob-open');
+  document.getElementById('mob-overlay').classList.add('open');
+  document.querySelector('.sidebar').style.display='flex';
+}
+function closeMobNav(){
+  document.querySelector('.sidebar').classList.remove('mob-open');
+  document.getElementById('mob-overlay').classList.remove('open');
 }
 
 /* ============================================================
@@ -902,6 +1345,7 @@ function buildNav(){
 }
 
 function goPage(id){
+  closeMobNav();
   document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active')});
   var nel=document.getElementById('ni-'+id);
   if(nel) nel.classList.add('active');
@@ -948,17 +1392,48 @@ function empty(em,title,body,action){
 function pgMinHome(){
   if(!DEMO){
     var code=CU.minCode||(CU.minCode=genCode('MIN'));
-    pc('<div class="card" style="text-align:center;padding:40px 24px">'
-      +'<div style="font-size:48px;margin-bottom:16px">⛪</div>'
-      +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify!</div>'
-      +'<div style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7;max-width:400px;margin-left:auto;margin-right:auto">your ministry dashboard will come to life as group leaders join and create their groups.</div>'
-      +'<div class="invite-card" style="max-width:320px;margin:0 auto 16px">'
-      +'<div class="invite-label">ministry invite code</div>'
-      +'<div class="invite-code">'+code+'</div>'
-      +'<div class="invite-note">share this with group leaders when they sign up</div>'
-      +'<button class="btn btn-p btn-sm" onclick="navigator.clipboard.writeText(\''+code+'\');toast(\'code copied! 📋\')">copy code</button>'
+    if(!GD||!GD.name){
+      // No group yet — show welcome + invite code
+      pc('<div class="card" style="text-align:center;padding:40px 24px">'
+        +'<div style="font-size:48px;margin-bottom:16px">⛪</div>'
+        +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify!</div>'
+        +'<div style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7;max-width:400px;margin-left:auto;margin-right:auto">your ministry dashboard will come to life as group leaders join and create their groups.</div>'
+        +'<div class="invite-card" style="max-width:320px;margin:0 auto 16px">'
+        +'<div class="invite-label">ministry invite code</div>'
+        +'<div class="invite-code">'+code+'</div>'
+        +'<div class="invite-note">share this with group leaders when they sign up</div>'
+        +'<button class="btn btn-p btn-sm" onclick="navigator.clipboard.writeText(\''+code+'\');toast(\'code copied! 📋\')">copy code</button>'
+        +'</div>'
+        +'<button class="btn btn-s" onclick="goPage(\'min-res\')">📚 add study resources</button>'
+        +'</div>');
+      return;
+    }
+    // Ministry leader has a group — show a real (partial) dashboard
+    var s=GD.stats||{meetings:0,answered:0,books:0};
+    pc('<div class="g4" style="margin-bottom:18px">'
+      +statCard('👥','1','active group')
+      +statCard('🙏',PRAYERS.length,'prayers')
+      +statCard('✨',s.answered,'answered')
+      +statCard('💚',(lastHealthScore?lastHealthScore+'%':'—'),'health score')
       +'</div>'
-      +'<button class="btn btn-s" onclick="goPage(\'min-res\')">📚 add study resources</button>'
+      +'<div class="g2">'
+      +'<div><div class="card"><div class="card-header"><span class="card-title">group health</span>'
+      +'<button class="btn btn-g btn-sm" onclick="goPage(\'health\')">see details →</button></div>'
+      +(lastHealthScore
+        ? healthBar(GD.name,lastHealthScore)
+        : '<div style="font-size:14px;color:var(--muted);text-align:center;padding:14px 0">no assessment yet — <a onclick="goPage(\'assess\')">take check-in →</a></div>')
+      +'</div>'
+      +'<div class="card"><div class="card-header"><span class="card-title">quick actions</span></div>'
+      +'<div style="display:grid;gap:9px">'
+      +'<button class="btn btn-s" onclick="goPage(\'assess\')">💚 run health check-in</button>'
+      +'<button class="btn btn-g" onclick="goPage(\'groups\')">👥 view all groups</button>'
+      +'<button class="btn btn-g" onclick="goPage(\'min-res\')">📚 manage resources</button>'
+      +'</div></div></div>'
+      +'<div><div class="card"><div class="card-header"><span class="card-title">ministry code</span></div>'
+      +'<div class="invite-code" style="font-size:22px;letter-spacing:2px;color:var(--brand);margin-bottom:8px">'+code+'</div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">share with group leaders so they connect to your ministry</div>'
+      +'<button class="btn btn-g btn-sm" onclick="navigator.clipboard.writeText(\''+code+'\');toast(\'copied! 📋\')">copy code</button>'
+      +'</div></div>'
       +'</div>');
     return;
   }
@@ -1018,7 +1493,7 @@ function pgGrpHome(){
   var stats=DEMO?g.stats:{meetings:0,answered:0,books:0};
   pc('<div class="mhero">'
     +'<div class="mhero-label">📅 '+g.name+'</div>'
-    +'<div class="mhero-title">'+(g.next.day?g.next.day+' nights':'no meeting scheduled yet')+'</div>'
+    +'<div class="mhero-title">'+(g.next.date?fmtDate(g.next.date):g.next.day?g.next.day+' nights':'no meeting scheduled yet')+'</div>'
     +'<div class="mhero-details">'
     +(g.next.time?'<span class="mhero-detail">⏰ '+g.next.time+'</span>':'')
     +(g.next.loc?'<span class="mhero-detail">📍 '+g.next.loc+'</span>':'')
@@ -1069,15 +1544,38 @@ function pgGrpHome(){
 function pgGroups(){
   if(!DEMO){
     var code=CU.minCode||(CU.minCode=genCode('MIN'));
+    // Build the real groups list — for now this includes the leader's own group if it exists
+    var myGroups=[];
+    if(GD&&GD.name){
+      var yr=yrs(GD.start||new Date());
+      myGroups.push({n:GD.name, members:1, lm:'active', h:lastHealthScore||0, years:yr});
+    }
     pc('<div class="invite-card">'
       +'<div class="invite-label">ministry invite code</div>'
       +'<div class="invite-code">'+code+'</div>'
       +'<div class="invite-note">share with group leaders so they connect to your ministry when signing up</div>'
       +'<button class="btn btn-p btn-sm" onclick="navigator.clipboard.writeText(\''+code+'\');toast(\'copied! 📋\')">copy code</button>'
       +'</div>'
-      +empty('👥','no groups yet','groups will appear here as group leaders sign up and create their groups.',''));
+      +(myGroups.length===0
+        ? empty('👥','no groups yet','groups will appear here as group leaders sign up and create their groups.','')
+        : '<div class="g4" style="margin-bottom:18px">'
+          +statCard('👥',myGroups.length,'active group'+(myGroups.length!==1?'s':''))
+          +statCard('🙋','—','total members')
+          +statCard('📅','—','meetings this month')
+          +statCard('💚',(lastHealthScore?lastHealthScore+'%':'—'),'avg health score')
+          +'</div>'
+          +'<div class="card"><div class="card-header"><span class="card-title">your groups</span></div>'
+          +myGroups.map(function(g){
+            return '<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px">'
+              +'<div style="flex:1"><div class="bold" style="font-size:14px">'+g.n+'</div>'
+              +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+g.years+' year'+(g.years!==1?'s':'')+' old · '+g.lm+'</div></div>'
+              +(g.h?'<div style="min-width:80px">'+healthBar('',g.h)+'</div><span class="badge '+(g.h>=80?'badge-green':g.h>=65?'badge-blue':'')+'">'+g.h+'%</span>':'<span class="badge badge-grey">not assessed</span>')
+              +'</div>';
+          }).join('')
+          +'</div>'));
     return;
   }
+  // Demo mode
   pc('<div class="g4" style="margin-bottom:20px">'
     +statCard('👥','5','active groups')
     +statCard('🙋','41','total members')
@@ -1101,9 +1599,35 @@ function pgGroups(){
    ============================================================ */
 function pgMinHealth(){
   if(!DEMO){
-    pc(empty('💚','no health data yet','health assessments will appear here once group members complete their first check-in.',''));
+    var hasGroup=GD&&GD.name;
+    var hasScore=lastHealthScore>0;
+    if(!hasGroup){
+      pc(empty('💚','no health data yet','health assessments will appear here once group members complete their first check-in.',''));
+      return;
+    }
+    pc((hasScore
+      ?'<div class="g4" style="margin-bottom:18px">'
+        +statCard('💚',lastHealthScore+'%','latest health score')
+        +statCard('✅','1','group assessed')
+        +statCard('📈','—','vs last check-in')
+        +statCard('⚠️',lastHealthScore<75?'1':'0','need attention')
+        +'</div>'
+        +'<div class="card"><div class="card-header"><span class="card-title">health by group</span></div>'
+        +healthBar(GD.name,lastHealthScore)
+        +(lastHealthScore<75
+          ?'<div class="banner banner-orange" style="margin-top:14px">⚠️ <strong>'+GD.name+'</strong> is below the healthy threshold. Consider checking in with your group leader.</div>'
+          :'')
+        +'</div>'
+      :'<div class="card" style="text-align:center;padding:36px 24px">'
+        +'<div style="font-size:36px;margin-bottom:12px">💚</div>'
+        +'<div style="font-family:\'DM Serif Display\',serif;font-size:20px;color:var(--dark);margin-bottom:8px">'+GD.name+' hasn\'t completed a check-in yet</div>'
+        +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px">encourage your group to complete their first health assessment.</div>'
+        +'<button class="btn btn-p btn-sm" onclick="goPage(\'assess\')">take health check-in →</button>'
+        +'</div>'
+    ));
     return;
   }
+  // Demo mode
   pc('<div class="g4" style="margin-bottom:20px">'
     +statCard('💚','75%','avg health score')
     +statCard('✅','4/5','groups assessed')
@@ -1120,29 +1644,102 @@ function pgMinHealth(){
    ============================================================ */
 function pgMinRes(){
   topAction('<button class="btn btn-p btn-sm" onclick="modalAddRes(\'ministry\')">+ add resource</button>');
-  var res=DEMO?DEMO_RESOURCES:[];
-  pc((res.length===0
-    ?empty('📚','no resources yet','add video series, books, Bible studies, or other resources for your groups.','<button class="btn btn-p" onclick="modalAddRes(\'ministry\')">+ add first resource</button>')
-    :'<div class="card"><div class="card-header"><span class="card-title">ministry resources</span></div>'
-      +res.map(function(r){return resCardHtml(r,false)}).join('')
-      +'</div>'));
+  var res=getMinistryResources();
+  var customHtml = res.length===0
+    ? '<div class="banner banner-green" style="text-align:center">no custom resources yet — add your first one above, or browse the Bible books below.</div>'
+    : res.map(function(r){ return resCardHtml(r, false, true); }).join('');
+
+  pc('<div class="card" style="margin-bottom:18px">'
+    +'<div class="card-header"><span class="card-title">ministry resources</span>'
+    +'<span class="card-note">visible to all groups in your ministry</span></div>'
+    +customHtml
+    +'</div>'
+    +'<div class="sec-label">books of the bible — default studies</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:14px;line-height:1.6">all 66 books are available as default studies for any group. groups can set these as their current study from their resources page.</div>'
+    +'<div class="tabs" id="min-bible-tabs" style="margin-bottom:14px">'
+    +'<div class="tab active" onclick="filterMinBible(\'all\',this)">all (66)</div>'
+    +'<div class="tab" onclick="filterMinBible(\'OT\',this)">old testament (39)</div>'
+    +'<div class="tab" onclick="filterMinBible(\'NT\',this)">new testament (27)</div>'
+    +'</div>'
+    +'<div id="min-bible-grid">'
+    +minBibleHtml(BIBLE_BOOKS)
+    +'</div>');
 }
 
-function resCardHtml(r, showStudyBtn){
-  return '<div class="res-card">'
+function minBibleHtml(list){
+  return list.map(function(b){
+    var sessions=BOOK_SESSION_COUNTS[b.title]||3;
+    var safe=b.title.replace(/'/g,"\\'");
+    return '<div class="res-card">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+      +'<div style="flex:1">'
+      +'<div class="res-type">'+b.t+' · '+sessions+'-session study</div>'
+      +'<div class="res-title">'+b.title+'</div>'
+      +'<div class="res-desc">'+b.desc+'</div>'
+      +'<div class="res-tags">'+b.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="res-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-p btn-sm" onclick="viewStudyGuide(\''+safe+'\',\'min-res\')">📖 view study guide</button>'
+      +'<button class="btn btn-g btn-sm" onclick="modalEditStudyGuide(\''+safe+'\')">✏️ edit guide</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function filterMinBible(f,el){
+  document.querySelectorAll('#min-bible-tabs .tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  var list=f==='all'?BIBLE_BOOKS:BIBLE_BOOKS.filter(function(b){return b.t===f});
+  document.getElementById('min-bible-grid').innerHTML=minBibleHtml(list);
+}
+
+function resCardHtml(r, showStudyBtn, showDelete){
+  var safeTitle=r.title.replace(/'/g,"\\'");
+  return '<div class="res-card" id="rc-'+(r.id||r.title.replace(/\s/g,'_'))+'">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+    +'<div style="flex:1">'
     +'<div class="res-type">'+r.type+'</div>'
     +'<div class="res-title">'+r.title+'</div>'
     +'<div class="res-desc">'+r.desc+'</div>'
     +'<div class="res-tags">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
-    +(showStudyBtn?'<div class="res-actions"><button class="btn btn-p btn-sm" onclick="setStudy(\''+r.title+'\')">📖 set as current study</button></div>':'')
+    +'</div>'
+    +(showDelete?'<button onclick="deleteMinRes(\''+safeTitle+'\')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;line-height:1;flex-shrink:0" title="remove resource">✕</button>':'')
+    +'</div>'
+    +(showStudyBtn?'<div class="res-actions" style="margin-top:10px"><button class="btn btn-p btn-sm" onclick="setStudy(\''+safeTitle+'\')">📖 set as current study</button></div>':'')
     +'</div>';
+}
+
+function deleteMinRes(title){
+  var arr=DEMO?MINISTRY_RESOURCES:REAL_MINISTRY_RESOURCES;
+  var idx=arr.findIndex(function(r){return r.title===title});
+  if(idx>-1) arr.splice(idx,1);
+  pgMinRes();
+  toast('resource removed');
 }
 
 /* ============================================================
    PAGE: MINISTRY - STATS
    ============================================================ */
 function pgStats(){
-  if(!DEMO){pc(empty('📊','no stats yet','stats will build up as your groups meet and members engage.',''));return;}
+  if(!DEMO){
+    var hasGroup=GD&&GD.name;
+    if(!hasGroup){pc(empty('📊','no stats yet','stats will build up as your groups meet and members engage.',''));return;}
+    var s=GD.stats||{meetings:0,answered:0,books:0};
+    pc('<div class="g4" style="margin-bottom:18px">'
+      +statCard('📅',s.meetings,'total meetings')
+      +statCard('🙏',PRAYERS.length,'prayer requests')
+      +statCard('✨',s.answered,'answered prayers')
+      +statCard('📖',s.books,'books studied')
+      +'</div>'
+      +'<div class="card"><div class="card-header"><span class="card-title">'+GD.name+'</span><span class="card-note">your group</span></div>'
+      +'<div class="g3">'
+      +'<div style="text-align:center;padding:14px;background:var(--bg);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:26px;color:var(--dark)">'+s.meetings+'</div><div style="font-size:12px;color:var(--muted)">meetings held</div></div>'
+      +'<div style="text-align:center;padding:14px;background:var(--bg);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:26px;color:var(--dark)">'+yrs(GD.start||new Date())+'</div><div style="font-size:12px;color:var(--muted)">years together</div></div>'
+      +'<div style="text-align:center;padding:14px;background:var(--bg);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:26px;color:var(--dark)">'+(lastHealthScore?lastHealthScore+'%':'—')+'</div><div style="font-size:12px;color:var(--muted)">health score</div></div>'
+      +'</div></div>');
+    return;
+  }
   pc('<div class="g4" style="margin-bottom:18px">'
     +statCard('📅','23','meetings this month')
     +statCard('🙏','89','prayer requests')
@@ -1169,7 +1766,7 @@ function pgMeeting(){
   var g=GD;
   pc('<div class="mhero">'
     +'<div class="mhero-label">📅 next meeting</div>'
-    +'<div class="mhero-title">'+(g.next.day||'day not set')+'</div>'
+    +'<div class="mhero-title">'+(g.next.date?fmtDate(g.next.date):g.next.day||'not scheduled yet')+'</div>'
     +'<div class="mhero-details">'
     +(g.next.time?'<span class="mhero-detail">⏰ '+g.next.time+'</span>':'')
     +(g.next.loc?'<span class="mhero-detail">📍 '+g.next.loc+'</span>':'')
@@ -1375,6 +1972,10 @@ var asmDone=false;
 function pgAssess(){
   if(asmDone){pgHealthResults();return;}
   if(!DEMO&&!CU.groupId){pc(empty('💚','group health','complete your first assessment to see how your group is doing.',''));return;}
+  // Ministry leaders get a button to edit the survey questions
+  var editBtn=CU.type==='ministry'
+    ?'<button class="btn btn-g btn-sm" onclick="modalEditSurvey()">✏️ edit questions</button>':'';
+  topAction(editBtn);
   pc('<div class="card">'
     +'<div style="font-family:\'DM Serif Display\',serif;font-size:22px;color:var(--dark);margin-bottom:6px">group health check-in</div>'
     +'<div style="font-size:14px;color:var(--muted);margin-bottom:24px">rate each area honestly - this helps your leader understand how the group is doing.</div>'
@@ -1403,11 +2004,15 @@ function pickAsm(qi,val,btn){
 }
 function submitAssessment(){
   if(Object.keys(asmAnswers).length<AQ.length){toast('please answer all questions 😊');return;}
+  var total=Object.values(asmAnswers).reduce(function(a,b){return a+b},0);
+  lastHealthScore=Math.round((total/(AQ.length*5))*100);
+  // Store in GD stats so milestones can see it
+  if(GD&&GD.stats) GD.stats.health=lastHealthScore;
   asmDone=true; pgHealthResults();
 }
 function pgHealthResults(){
   var total=Object.values(asmAnswers).reduce(function(a,b){return a+b},0);
-  var pct=Math.round((total/(AQ.length*5))*100);
+  var pct=lastHealthScore||Math.round((total/(AQ.length*5))*100);
   var cls=pct>=80?'var(--brand)':pct>=60?'var(--accent)':'#E74C3C';
   pc('<div class="card" style="text-align:center;padding:32px 24px;margin-bottom:18px">'
     +'<div style="font-size:54px;font-weight:700;color:'+cls+';font-family:\'DM Serif Display\',serif">'+pct+'%</div>'
@@ -1431,25 +2036,90 @@ function pgHealthResults(){
    ============================================================ */
 function pgMiles(){
   if(!DEMO&&!CU.groupId){pc(empty('🏆','milestones','your group\'s milestones and badges will appear here as you meet together.',''));return;}
-  var g=DEMO?GD:{start:new Date().toISOString(),stats:{meetings:0,answered:0,books:0}};
-  var years=yrs(g.start||new Date());
+  // Always use actual GD — GD is populated for both demo and real users once a group exists
+  var g=GD||{start:new Date().toISOString(),stats:{meetings:0,answered:0,books:0}};
+  var yearsNum=yrs(g.start||new Date().toISOString());
+  var stats=g.stats||{meetings:0,answered:0,books:0};
+  var visible=computeMilestones(stats,yearsNum,DEMO?82:0);
+
+  var earned=visible.filter(function(m){return m.earned;});
+  var upcoming=visible.filter(function(m){return !m.earned&&m.type!=='special';});
+  var special=visible.filter(function(m){return m.type==='special';});
+
+  var typeLabels={meetings:'meetings',years:'time together',prayers:'prayer',answered:'answered prayer',books:'studies',health:'group health',special:'spirit-led moments'};
+
+  // Group upcoming by type for nicer display
+  var upByType={};
+  upcoming.forEach(function(m){if(!upByType[m.type])upByType[m.type]=[];upByType[m.type].push(m);});
+
   pc('<div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,var(--brand-p),#fff);border-color:var(--brand-l)">'
     +'<div class="card-header"><span class="card-title">🌟 your journey</span></div>'
-    +'<div class="g3">'
-    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+(g.stats?g.stats.meetings:0)+'</div><div style="font-size:12px;color:var(--muted)">meetings</div></div>'
-    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+years+'</div><div style="font-size:12px;color:var(--muted)">years together</div></div>'
-    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+(g.stats?g.stats.answered:0)+'</div><div style="font-size:12px;color:var(--muted)">answered ✨</div></div>'
+    +'<div class="g4">'
+    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+stats.meetings+'</div><div style="font-size:12px;color:var(--muted)">meetings</div></div>'
+    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+yearsNum+'</div><div style="font-size:12px;color:var(--muted)">years together</div></div>'
+    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+stats.answered+'</div><div style="font-size:12px;color:var(--muted)">answered ✨</div></div>'
+    +'<div style="text-align:center;padding:14px;background:rgba(255,255,255,.7);border-radius:var(--rsm)"><div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:var(--dark)">'+earned.length+'</div><div style="font-size:12px;color:var(--muted)">badges earned</div></div>'
     +'</div></div>'
+
+    // EARNED
+    +(earned.length>0
+      ?'<div class="sec-label">🏆 earned badges ('+earned.length+')</div>'
+        +'<div class="badge-grid" style="margin-bottom:22px">'
+        +earned.map(function(b){
+          return '<div class="milestone earned">'
+            +'<div class="milestone-em">'+b.em+'</div>'
+            +'<div class="milestone-name">'+b.n+'</div>'
+            +'<div class="milestone-desc">'+b.d+'</div>'
+            +'</div>';
+        }).join('')
+        +'</div>'
+      :'')
+
+    // UPCOMING (grouped by category)
+    +(Object.keys(upByType).length>0
+      ?'<div class="sec-label">🎯 next up — keep going!</div>'
+        +Object.keys(upByType).map(function(type){
+          return '<div style="margin-bottom:18px">'
+            +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--brand);margin-bottom:10px">'+typeLabels[type]+'</div>'
+            +'<div class="badge-grid">'
+            +upByType[type].map(function(b){
+              var progVal=type==='meetings'?stats.meetings:type==='years'?yearsNum:type==='answered'?stats.answered:type==='books'?stats.books:0;
+              var pct=b.threshold?Math.min(100,Math.round((progVal/b.threshold)*100)):0;
+              return '<div class="milestone" style="border-style:dashed;opacity:.85">'
+                +'<div class="milestone-em" style="opacity:.5">'+b.em+'</div>'
+                +'<div class="milestone-name">'+b.n+'</div>'
+                +'<div class="milestone-desc">'+b.d+'</div>'
+                +(b.threshold
+                  ?'<div style="margin-top:8px"><div style="height:4px;background:var(--border);border-radius:2px"><div style="height:100%;width:'+pct+'%;background:var(--brand-l);border-radius:2px;transition:width .4s"></div></div>'
+                    +'<div style="font-size:10px;color:var(--muted);margin-top:3px">'+progVal+' / '+b.threshold+'</div></div>'
+                  :'')
+                +'</div>';
+            }).join('')
+            +'</div></div>';
+        }).join('')
+      :'')
+
+    // SPIRIT-LED SPECIAL BADGES
+    +'<div class="sec-label">✨ spirit-led moments</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:12px;line-height:1.6">these can\'t be counted — only celebrated. mark them when they happen.'+(isLeader()?'':' your leader can award these.')+'</div>'
     +'<div class="badge-grid">'
-    +BADGES.map(function(b){
-      return '<div class="milestone'+(b.e?' earned':' locked')+'">'
+    +special.map(function(b){
+      return '<div class="milestone'+(b.earned?' earned':'')+'" '
+        +(isLeader()?'onclick="toggleSpecial(\''+b.n+'\')" style="cursor:pointer" title="click to award this milestone"':'')+' >'
         +'<div class="milestone-em">'+b.em+'</div>'
         +'<div class="milestone-name">'+b.n+'</div>'
         +'<div class="milestone-desc">'+b.d+'</div>'
-        +(b.e?'':'<div style="font-size:10px;color:var(--muted);margin-top:4px">locked</div>')
+        +(b.earned?'<div style="font-size:10px;color:var(--brand);margin-top:4px;font-weight:600">✓ earned!</div>'
+          :(isLeader()?'<div style="font-size:10px;color:var(--muted);margin-top:4px">click to award</div>':''))
         +'</div>';
     }).join('')
     +'</div>');
+}
+
+function toggleSpecial(name){
+  specialEarned[name]=!specialEarned[name];
+  toast(specialEarned[name]?'🎉 "'+name+'" milestone awarded!':'"'+name+'" milestone removed');
+  pgMiles();
 }
 
 /* ============================================================
@@ -1459,8 +2129,10 @@ var bibleFilter='all';
 function pgResources(){
   if(isLeader()) topAction('<button class="btn btn-p btn-sm" onclick="modalAddRes(\'group\')">+ add resource</button>');
   var grpRes=CU.groupResources||[];
+  var minRes=getMinistryResources();
+
   pc((GD&&GD.study
-    ?'<div class="invite-card" style="margin-bottom:0">'
+    ?'<div class="invite-card" style="margin-bottom:18px">'
       +'<div class="invite-label">📖 currently studying</div>'
       +'<div style="font-size:16px;font-weight:600;color:var(--dark);margin-bottom:4px">'+GD.study+'</div>'
       +(GD.hw?'<div style="font-size:13px;color:var(--mid);margin-bottom:10px"><strong>homework:</strong> '+GD.hw+'</div>':'')
@@ -1472,11 +2144,19 @@ function pgResources(){
     +'<div style="font-size:14px;color:var(--mid);margin-bottom:12px">not sure what to study next? answer 3 quick questions and we\'ll suggest something.</div>'
     +'<button class="btn btn-a btn-sm" onclick="modalStudyQuiz()">get a recommendation →</button>'
     +'</div>'
-    +(grpRes.length>0
-      ?'<div class="sec-label">group resources</div>'
-        +grpRes.map(function(r){return resCardHtml(r,isLeader())}).join('')
+    // Ministry resources section (shared by all groups)
+    +(minRes.length>0
+      ?'<div class="sec-label">📌 ministry resources</div>'
+        +'<div style="font-size:13px;color:var(--mid);margin-bottom:12px">added by your ministry leader — available to all groups</div>'
+        +minRes.map(function(r){return resCardHtml(r,isLeader(),false);}).join('')
       :'')
-    +'<div class="sec-label">books of the bible</div>'
+    // Group-specific resources
+    +(grpRes.length>0
+      ?'<div class="sec-label" style="margin-top:6px">📂 group resources</div>'
+        +grpRes.map(function(r){return resCardHtml(r,isLeader(),false);}).join('')
+      :'')
+    // Bible books
+    +'<div class="sec-label" style="margin-top:6px">📖 books of the bible</div>'
     +'<div class="tabs" id="bible-tabs" style="margin-bottom:14px">'
     +'<div class="tab'+(bibleFilter==='all'?' active':'')+'" onclick="filterBible(\'all\',this)">all (66)</div>'
     +'<div class="tab'+(bibleFilter==='OT'?' active':'')+'" onclick="filterBible(\'OT\',this)">old testament (39)</div>'
@@ -1488,12 +2168,21 @@ function pgResources(){
 }
 function bibleHtml(list){
   return list.map(function(b){
+    var sessions=BOOK_SESSION_COUNTS[b.title]||3;
+    var safe=b.title.replace(/'/g,"\\'");
     return '<div class="res-card">'
-      +'<div class="res-type">'+b.t+'</div>'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+      +'<div style="flex:1">'
+      +'<div class="res-type">'+b.t+' · '+sessions+'-session study</div>'
       +'<div class="res-title">'+b.title+'</div>'
       +'<div class="res-desc">'+b.desc+'</div>'
       +'<div class="res-tags">'+b.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
-      +(isLeader()?'<div class="res-actions"><button class="btn btn-p btn-sm mt-10" onclick="setStudy(\''+b.title+'\')">📖 set as current study</button></div>':'')
+      +'</div>'
+      +'</div>'
+      +'<div class="res-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-p btn-sm" onclick="viewStudyGuide(\''+safe+'\',\'resources\')">📖 view study guide</button>'
+      +(isLeader()?'<button class="btn btn-g btn-sm" onclick="setStudy(\''+safe+'\')">✓ set as current study</button>':'')
+      +'</div>'
       +'</div>';
   }).join('');
 }
@@ -1562,6 +2251,7 @@ function modalCreateGroup(){
     +'<div class="fg"><label>when did your group start?</label><input type="date" id="cg-start" value="'+new Date().toISOString().split('T')[0]+'"></div>'
     +'<div class="banner banner-green">💡 if your group started in the past, enter the real start date - you\'ll instantly earn milestone badges!</div>'
     +'<div class="fg"><label>meeting day</label><select id="cg-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
+    +'<div class="fg"><label>next meeting date</label><input type="date" id="cg-date" value="'+nextDateForDay(new Date().getDay())+'"></div>'
     +'<div class="fg"><label>meeting time</label><select id="cg-time">'+timeOptions()+'</select></div>'
     +'<div class="fg"><label>how often does your group meet?</label><select id="cg-freq"><option>weekly</option><option>every other week</option><option>monthly</option><option>irregular / varies</option></select></div>'
     +'<button class="btn btn-p btn-full" onclick="doCreateGroup()">create group 🎉</button>');
@@ -1572,6 +2262,7 @@ async function doCreateGroup(){
   if(!name){toast('please enter a group name 😊');return;}
   var start=document.getElementById('cg-start').value;
   var day=document.getElementById('cg-day').value;
+  var date=document.getElementById('cg-date').value;
   var time=document.getElementById('cg-time').value;
   var freq=document.getElementById('cg-freq').value;
   if(CU.id){
@@ -1587,7 +2278,7 @@ async function doCreateGroup(){
     if(mem.error){toast('group created but member link failed: '+mem.error.message);}
     CU.groupId=gid;
   }
-  GD={name:name,start:start,next:{day:day,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  GD={name:name,start:start,next:{day:day,date:date,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   closeModal();
   goPage(CU.type==='ministry'?'grp-home':'home');
   toast('group created! 🎉');
@@ -1595,9 +2286,11 @@ async function doCreateGroup(){
 
 function modalEditMeeting(){
   var n=GD&&GD.next?GD.next:{};
+  var todayVal=n.date||new Date().toISOString().split('T')[0];
   openModal(mClose()+'<h2>📅 edit meeting details</h2>'
     +'<div class="fg"><label>meeting day</label>'
     +'<select id="em-day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>'
+    +'<div class="fg"><label>next meeting date</label><input type="date" id="em-date" value="'+todayVal+'"></div>'
     +'<div class="fg"><label>meeting time</label><select id="em-time">'+timeOptions()+'</select></div>'
     +'<div class="fg"><label>location / host name</label><input type="text" id="em-loc" value="'+(n.loc||'')+'" placeholder="e.g. Marcus & Jenna\'s"></div>'
     +'<div class="fg"><label>frequency</label>'
@@ -1620,6 +2313,7 @@ function saveMeeting(){
   if(!GD) GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   GD.next={
     day:document.getElementById('em-day').value,
+    date:document.getElementById('em-date').value,
     time:document.getElementById('em-time').value,
     loc:document.getElementById('em-loc').value,
     freq:document.getElementById('em-freq').value
@@ -1700,21 +2394,33 @@ function modalInviteCode(){
 }
 
 function modalAddRes(scope){
+  var label=scope==='ministry'?'all groups in your ministry':'your group only';
   openModal(mClose()+'<h2>📚 add a resource</h2>'
-    +'<div class="modal-sub">this resource will be added to your <strong>'+scope+'\'s</strong> list.</div>'
-    +'<div class="fg"><label>title</label><input type="text" id="res-title" placeholder="resource name"></div>'
-    +'<div class="fg"><label>type</label><select id="res-type"><option>Bible Study</option><option>Video Series</option><option>Book</option><option>Devotional</option></select></div>'
-    +'<div class="fg"><label>description</label><textarea rows="3" id="res-desc" placeholder="brief description..."></textarea></div>'
+    +'<div class="modal-sub">this resource will be visible to <strong>'+label+'</strong>.</div>'
+    +'<div class="fg"><label>title</label><input type="text" id="res-title" placeholder="e.g. The Chosen - Season 1"></div>'
+    +'<div class="fg"><label>type</label><select id="res-type"><option>Bible Study</option><option>Video Series</option><option>Book</option><option>Devotional</option><option>Podcast</option><option>Other</option></select></div>'
+    +'<div class="fg"><label>description</label><textarea rows="3" id="res-desc" placeholder="brief description of what this resource covers..."></textarea></div>'
+    +'<div class="fg"><label>topic tags (optional, comma-separated)</label><input type="text" id="res-tags-input" placeholder="e.g. faith, prayer, community"></div>'
     +'<button class="btn btn-p btn-full" onclick="saveResource(\''+scope+'\')">add resource</button>');
 }
 function saveResource(scope){
   var title=document.getElementById('res-title').value.trim();
   var type=document.getElementById('res-type').value;
   var desc=document.getElementById('res-desc').value.trim();
+  var tags=document.getElementById('res-tags-input')?document.getElementById('res-tags-input').value.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
   if(!title){toast('please enter a title 😊');return;}
-  var res={title:title,type:type,desc:desc,tags:[]};
-  if(scope==='ministry'){ DEMO_RESOURCES.unshift(res); closeModal(); pgMinRes(); }
-  else { if(!CU.groupResources) CU.groupResources=[]; CU.groupResources.unshift(res); closeModal(); pgResources(); }
+  var res={id:'mr'+Date.now(),title:title,type:type,desc:desc,tags:tags};
+  if(scope==='ministry'){
+    var arr=DEMO?MINISTRY_RESOURCES:REAL_MINISTRY_RESOURCES;
+    arr.unshift(res);
+    closeModal();
+    pgMinRes();
+  } else {
+    if(!CU.groupResources) CU.groupResources=[];
+    CU.groupResources.unshift(res);
+    closeModal();
+    pgResources();
+  }
   toast('resource added 📚');
 }
 
@@ -1730,6 +2436,44 @@ function saveHost(){
   if(!n){toast('please enter a name 😊');return;}
   ROTATION.push({n:n,a:a});
   closeModal(); pgRotation(); toast('host added 🏡');
+}
+
+function modalEditSurvey(){
+  var html=mClose()+'<h2>✏️ edit health survey</h2>'
+    +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">customize the questions your group members answer during health check-ins. changes apply to all your groups.</div>'
+    +'<div id="sq-list">';
+  AQ.forEach(function(q,i){
+    html+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;margin-bottom:10px">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--brand)">question '+(i+1)+'</div>'
+      +'<button onclick="deleteSurveyQ('+i+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>'
+      +'</div>'
+      +'<input type="text" value="'+q.q.replace(/"/g,'&quot;')+'" onchange="AQ['+i+'].q=this.value" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:9px 12px;font-family:inherit;font-size:14px;background:#fff;margin-bottom:8px">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">low label (left side)</div>'
+      +'<input type="text" value="'+q.lo+'" onchange="AQ['+i+'].lo=this.value" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff"></div>'
+      +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">high label (right side)</div>'
+      +'<input type="text" value="'+q.hi+'" onchange="AQ['+i+'].hi=this.value" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff"></div>'
+      +'</div></div>';
+  });
+  html+='</div>'
+    +'<button class="btn btn-s btn-full" style="margin-bottom:10px" onclick="addSurveyQ()">+ add question</button>'
+    +'<button class="btn btn-g btn-sm" onclick="AQ=JSON.parse(JSON.stringify(AQ_DEFAULT));closeModal();toast(\'questions reset to defaults ✅\')">reset to defaults</button>'
+    +'<button class="btn btn-p btn-full mt-10" onclick="closeModal();toast(\'survey updated ✅\')">save changes</button>';
+  openModal(html);
+}
+function deleteSurveyQ(i){
+  if(AQ.length<=2){toast('surveys need at least 2 questions 😊');return;}
+  AQ.splice(i,1);
+  modalEditSurvey();
+}
+function addSurveyQ(){
+  AQ.push({q:'New question — click to edit',lo:'low',hi:'high'});
+  modalEditSurvey();
+  setTimeout(function(){
+    var list=document.getElementById('sq-list');
+    if(list) list.scrollTop=list.scrollHeight;
+  },50);
 }
 
 function modalAddSlot(){
