@@ -21,7 +21,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* LOGIN */
 #s-login{background:linear-gradient(145deg,#1B2D24 0%,#2D6A4F 60%,#52B788 100%);align-items:center;justify-content:center;padding:24px}
 .lcard{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.2)}
-.llogo{font-family:'DM Serif Display',serif;font-size:46px;color:var(--brand);text-align:center;margin-bottom:4px}
+.llogo{font-family:'DM Sans',sans-serif;font-size:46px;font-weight:600;color:var(--brand);text-align:center;margin-bottom:4px;letter-spacing:-1px}
 .ltag{text-align:center;color:var(--muted);font-size:14px;margin-bottom:32px}
 .fg{margin-bottom:16px}
 .fg label{display:block;font-size:13px;font-weight:500;color:var(--mid);margin-bottom:6px}
@@ -56,7 +56,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* APP SHELL */
 #s-app{flex-direction:row}
 .sidebar{width:256px;background:var(--dark);color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
-.sb-logo{padding:26px 22px 18px;font-family:'DM Serif Display',serif;font-size:28px;color:var(--brand-l);border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-logo{padding:26px 22px 18px;font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:-0.5px;font-size:28px;color:var(--brand-l);border-bottom:1px solid rgba(255,255,255,.07)}
 .sb-logo span{font-size:11px;font-family:'DM Sans',sans-serif;font-weight:400;color:rgba(255,255,255,.35);display:block;margin-top:-3px}
 .sb-user{padding:14px 22px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px}
 .u-av{width:36px;height:36px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
@@ -362,25 +362,51 @@ window.addEventListener('DOMContentLoaded', async function() {
 
 async function loadUserProfile(user) {
   DEMO_MODE = false;
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  if (profile) {
-    CU = {
+  var { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+
+  // If profile doesn't exist yet (trigger delay), create it
+  if (!profile) {
+    var meta = user.user_metadata || {};
+    await sb.from('profiles').insert({
       id: user.id,
-      name: profile.full_name || user.email,
-      init: getInitials(profile.full_name || user.email),
-      role: profile.role === 'ministry' ? 'ministry leader' : profile.role === 'leader' ? 'group leader' : 'group member',
-      type: profile.role,
-      email: user.email
-    };
-    document.getElementById('s-login').classList.remove('active');
-    document.getElementById('s-app').classList.add('active');
-    document.getElementById('sb-name').textContent = CU.name;
-    document.getElementById('sb-role').textContent = CU.role;
-    document.getElementById('sb-av').textContent = CU.init;
-    document.getElementById('sb-role-lbl').textContent = CU.role;
-    buildNav();
-    nav('home');
+      full_name: meta.full_name || user.email,
+      role: meta.role || 'member'
+    });
+    var { data: p2 } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    profile = p2;
   }
+
+  if (!profile) {
+    toast('error loading profile — please try again 😕');
+    var btn = document.querySelector('#view-signin .btn-p');
+    if (btn) { btn.textContent = 'sign in'; btn.disabled = false; }
+    return;
+  }
+
+  // Support dual role: ministry leaders who also lead a group
+  var roleType = profile.role;
+  var roleLabel = roleType === 'ministry' ? 'ministry leader'
+                : roleType === 'leader' ? 'group leader'
+                : 'group member';
+
+  CU = {
+    id: user.id,
+    name: profile.full_name || user.email,
+    init: getInitials(profile.full_name || user.email),
+    role: roleLabel,
+    type: roleType,
+    email: user.email,
+    churchName: profile.church_name || ''
+  };
+
+  document.getElementById('s-login').classList.remove('active');
+  document.getElementById('s-app').classList.add('active');
+  document.getElementById('sb-name').textContent = CU.name;
+  document.getElementById('sb-role').textContent = CU.role;
+  document.getElementById('sb-av').textContent = CU.init;
+  document.getElementById('sb-role-lbl').textContent = CU.role;
+  buildNav();
+  nav('home');
 }
 
 function getInitials(name) {
@@ -628,7 +654,13 @@ var NAV={
     {id:'hresults',ic:'💚',lb:'group health'},
     {id:'resources',ic:'📚',lb:'resources'},
     {id:'reminders',ic:'🔔',lb:'send reminders'},
-    {id:'stats',ic:'📊',lb:'ministry stats'}
+    {id:'stats',ic:'📊',lb:'ministry stats'},
+    {id:'__divider__',ic:'',lb:'my group'},
+    {id:'nextmtg',ic:'📅',lb:'next meeting'},
+    {id:'attendance',ic:'✅',lb:'attendance'},
+    {id:'prayers',ic:'🙏',lb:'prayer wall'},
+    {id:'schedule',ic:'🗓️',lb:'scheduling'},
+    {id:'milestones',ic:'🏆',lb:'milestones'}
   ],
   leader:[
     {id:'home',ic:'🏠',lb:'home'},
@@ -691,7 +723,13 @@ async function logout(){
 
 function buildNav(){
   var html='';
-  NAV[CU.type].forEach(function(item){
+  var items = NAV[CU.type] || NAV.member;
+  items.forEach(function(item){
+    if(item.id==='__divider__'){
+      html+='<div style="border-top:1px solid rgba(255,255,255,.1);margin:8px 0;padding:8px 22px 2px">'
+        +'<div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.5px;text-transform:uppercase">'+item.lb+'</div></div>';
+      return;
+    }
     html+='<div class="ni" id="ni-'+item.id+'" onclick="nav(\''+item.id+'\')">'
       +'<span class="ni-ic">'+item.ic+'</span><span>'+item.lb+'</span></div>';
   });
