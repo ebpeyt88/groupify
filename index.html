@@ -582,13 +582,6 @@ function getMinistryResources(){
   return DEMO ? MINISTRY_RESOURCES : REAL_MINISTRY_RESOURCES;
 }
 
-var DEMO_SCHED = [
-  {id:1,day:'Tuesday',date:'March 4',time:'7:30 PM',votes:4},
-  {id:2,day:'Wednesday',date:'March 5',time:'7:00 PM',votes:6},
-  {id:3,day:'Thursday',date:'March 6',time:'7:30 PM',votes:3},
-  {id:4,day:'Saturday',date:'March 8',time:'10:00 AM',votes:2}
-];
-
 var DEMO_GD = {
   name:'Thursday Night Crew',start:'2022-09-08',
   next:{day:'Thursday',date:'2026-03-05',time:'7:30 PM',loc:'Marcus & Jenna\'s',freq:'weekly'},
@@ -649,7 +642,7 @@ var lastHealthScore = 0;
    BADGES / MILESTONES
    ============================================================ */
 // Milestone structure:
-// type: 'meetings' | 'years' | 'prayers' | 'answered' | 'books' | 'health' | 'special'
+// type: 'meetings' | 'years' | 'prayers' | 'answered' | 'books' | 'health' | 'serving' | 'special'
 // threshold: the value needed to earn it (for stat-based types)
 // e: earned (computed at runtime based on actual stats)
 var ALL_MILESTONES = [
@@ -699,7 +692,15 @@ var ALL_MILESTONES = [
   {em:'🏆',n:'health champion',     d:'scored 90+ on a group health check-in',       type:'health',  threshold:90},
   {em:'💎',n:'elite community',     d:'scored 95+ on a group health check-in',       type:'health',  threshold:95},
 
-  // --- SPECIAL / SPIRIT-LED ---
+  // --- SERVING ---
+  {em:'🫶',n:'first serve',          d:'completed your first service project together',  type:'serving',   threshold:null},
+  {em:'🛠️',n:'hands and feet',       d:'served together 3 times',                        type:'serving',   threshold:null},
+  {em:'🌱',n:'seeds planted',        d:'five service projects completed',                type:'serving',   threshold:null},
+  {em:'🏘️',n:'community builders',   d:'served your local community 10 times',           type:'serving',   threshold:null},
+  {em:'🌍',n:'beyond our walls',     d:'served a cause beyond your neighborhood',        type:'serving',   threshold:null},
+  {em:'🔥',n:'on mission',           d:'made serving a regular rhythm of your group',    type:'serving',   threshold:null},
+
+  // --- SPIRIT-LED (phase 2) ---
   {em:'🕯️',n:'lit a candle',        d:'prayed for someone outside the group',       type:'special',  threshold:null},
   {em:'🤝',n:'open door',           d:'welcomed a new member into the group',       type:'special',  threshold:null},
   {em:'🌿',n:'new roots',           d:'hosted your first meeting',                  type:'special',  threshold:null},
@@ -716,11 +717,9 @@ var specialEarned = {};
 
 function computeMilestones(stats, years, healthScore){
   var m=stats.meetings||0, a=stats.answered||0, b=stats.books||0;
-  // Prayer count: use actual PRAYERS array length (works for both demo and real)
   var p=PRAYERS.length;
   var h=healthScore||0;
 
-  // Group milestones by type
   var byType={};
   ALL_MILESTONES.forEach(function(ms){
     if(!byType[ms.type]) byType[ms.type]=[];
@@ -730,8 +729,8 @@ function computeMilestones(stats, years, healthScore){
   var result=[];
   Object.keys(byType).forEach(function(type){
     var group=byType[type];
-    if(type==='special'){
-      // Special badges: earned state stored in specialEarned, never auto-reset
+    // Manual badge types — stored in specialEarned keyed by name
+    if(type==='special'||type==='serving'){
       group.forEach(function(ms){
         ms.earned = specialEarned[ms.n] || false;
         result.push(ms);
@@ -744,7 +743,6 @@ function computeMilestones(stats, years, healthScore){
       ms.earned = ms.threshold!==null && val >= ms.threshold;
       if(ms.earned) earnedCount=i+1;
     });
-    // Show: all earned + next 2 unearned after the last earned one
     group.forEach(function(ms,i){
       if(ms.earned || i<=earnedCount+1) result.push(ms);
     });
@@ -1393,7 +1391,6 @@ function pgMinHome(){
   if(!DEMO){
     var code=CU.minCode||(CU.minCode=genCode('MIN'));
     if(!GD||!GD.name){
-      // No group yet — show welcome + invite code
       pc('<div class="card" style="text-align:center;padding:40px 24px">'
         +'<div style="font-size:48px;margin-bottom:16px">⛪</div>'
         +'<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:var(--dark);margin-bottom:10px">welcome to groupify!</div>'
@@ -1408,11 +1405,12 @@ function pgMinHome(){
         +'</div>');
       return;
     }
-    // Ministry leader has a group — show a real (partial) dashboard
+    // Fix #5: use real counts
     var s=GD.stats||{meetings:0,answered:0,books:0};
+    var prayerCount=PRAYERS.length; // real count, not demo
     pc('<div class="g4" style="margin-bottom:18px">'
       +statCard('👥','1','active group')
-      +statCard('🙏',PRAYERS.length,'prayers')
+      +statCard('🙏',prayerCount,'prayers')
       +statCard('✨',s.answered,'answered')
       +statCard('💚',(lastHealthScore?lastHealthScore+'%':'—'),'health score')
       +'</div>'
@@ -1505,8 +1503,12 @@ function pgGrpHome(){
     +'<div>'
     +'<div class="iq-card">'
     +'<div class="iq-label">💬 this meeting\'s icebreaker</div>'
-    +'<div class="iq-text">"'+IQ[Math.floor(Math.random()*IQ.length)]+'"</div>'
-    +'<button class="btn btn-s btn-sm" onclick="goPage(\'ice\')">see all questions →</button>'
+    +'<div class="iq-text">"'+currentIceQ()+'"</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px">'
+    +(iceSkip>0?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgGrpHome()">← back</button>':'')
+    +'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgGrpHome()">skip →</button>'
+    +'<button class="btn btn-s btn-sm" onclick="goPage(\'ice\')">see all →</button>'
+    +'</div>'
     +'</div>'
     +'<div class="card">'
     +'<div class="card-header"><span class="card-title">📖 current study</span>'
@@ -1544,11 +1546,11 @@ function pgGrpHome(){
 function pgGroups(){
   if(!DEMO){
     var code=CU.minCode||(CU.minCode=genCode('MIN'));
-    // Build the real groups list — for now this includes the leader's own group if it exists
     var myGroups=[];
     if(GD&&GD.name){
       var yr=yrs(GD.start||new Date());
-      myGroups.push({n:GD.name, members:1, lm:'active', h:lastHealthScore||0, years:yr});
+      var allM=(CU.groupRealMembers||[]).concat(CU.placeholderMembers||[]);
+      myGroups.push({n:GD.name,members:allM.length||1,lm:'active',h:lastHealthScore||0,years:yr,real:true});
     }
     pc('<div class="invite-card">'
       +'<div class="invite-label">ministry invite code</div>'
@@ -1560,16 +1562,17 @@ function pgGroups(){
         ? empty('👥','no groups yet','groups will appear here as group leaders sign up and create their groups.','')
         : '<div class="g4" style="margin-bottom:18px">'
           +statCard('👥',myGroups.length,'active group'+(myGroups.length!==1?'s':''))
-          +statCard('🙋','—','total members')
+          +statCard('🙋',myGroups.reduce(function(a,g){return a+g.members},0),'total members')
           +statCard('📅','—','meetings this month')
           +statCard('💚',(lastHealthScore?lastHealthScore+'%':'—'),'avg health score')
           +'</div>'
           +'<div class="card"><div class="card-header"><span class="card-title">your groups</span></div>'
           +myGroups.map(function(g){
-            return '<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px">'
+            return '<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;cursor:pointer" onclick="viewMinGroup(\''+g.n.replace(/'/g,"\\'")+'\')">'
               +'<div style="flex:1"><div class="bold" style="font-size:14px">'+g.n+'</div>'
-              +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+g.years+' year'+(g.years!==1?'s':'')+' old · '+g.lm+'</div></div>'
+              +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+g.members+' member'+(g.members!==1?'s':'')+' · '+g.years+' yr'+(g.years!==1?'s':'')+' old</div></div>'
               +(g.h?'<div style="min-width:80px">'+healthBar('',g.h)+'</div><span class="badge '+(g.h>=80?'badge-green':g.h>=65?'badge-blue':'')+'">'+g.h+'%</span>':'<span class="badge badge-grey">not assessed</span>')
+              +'<span style="color:var(--muted);font-size:18px">›</span>'
               +'</div>';
           }).join('')
           +'</div>'));
@@ -1584,13 +1587,86 @@ function pgGroups(){
     +'</div>'
     +'<div class="card"><div class="card-header"><span class="card-title">all groups</span></div>'
     +DEMO_GROUPS.map(function(g){
-      return '<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px">'
+      return '<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;cursor:pointer" onclick="viewMinGroup(\''+g.n+'\')">'
         +'<div style="flex:1"><div class="bold" style="font-size:14px">'+g.n+'</div>'
         +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+g.members+' members · last met '+g.lm+'</div></div>'
         +'<div style="min-width:80px">'+healthBar('',g.h)+'</div>'
         +'<span class="badge '+(g.h>=80?'badge-green':g.h>=65?'badge-blue':'')+'">'+g.h+'%</span>'
+        +'<span style="color:var(--muted);font-size:18px">›</span>'
         +'</div>';
     }).join('')
+    +'</div>');
+}
+
+// Ministry leader: view a group's details (no prayer requests)
+var DEMO_GROUP_DETAILS = {
+  'Thursday Night Crew':{leader:'Marcus Thompson',study:'James: Faith That Works',members:['Marcus Thompson (leader)','Jenna Thompson (co-leader)','Derek Richards','Amy Chen','Chris Wallace (placeholder)'],meetings:48,answered:12,books:6,health:87,start:'2022-09-08'},
+  'Young Couples':{leader:'Sarah & Mike Patel',study:'Emotionally Healthy Spirituality',members:['Sarah Patel (leader)','Mike Patel (co-leader)','Jordan Lee','Mia Torres','Caleb Brown','Priya Nair','Tom Yates','Dana Kim'],meetings:22,answered:5,books:3,health:72,start:'2023-11-01'},
+  'Sunday Morning Men':{leader:'Pastor James',study:'Romans',members:['James Mitchell (leader)','Ray Soto','Aaron Webb','Danny Park','Eli Hughes'],meetings:61,answered:18,books:9,health:91,start:'2021-06-15'},
+  'Women of Faith':{leader:'Carol Adams',study:'Psalms',members:['Carol Adams (leader)','Lynn Ho','Brenda Shaw','Tasha Green','Rachel Moore','Janet Kim','Sofia Cruz'],meetings:34,answered:8,books:5,health:65,start:'2023-03-20'},
+  'College Life':{leader:'Tyler Nash',study:'John',members:['Tyler Nash (leader)','Aiden Cole','Emma Wright','Jake Brooks','Lily Chen','Nate Ford','Olivia Ross','Sam Park','Zoe Lane'],meetings:19,answered:3,books:2,health:58,start:'2024-08-25'}
+};
+
+function viewMinGroup(name){
+  // For real account, show the leader's actual group
+  var det;
+  if(!DEMO && GD && GD.name===name){
+    var allM=(CU.groupRealMembers||[]).concat(CU.placeholderMembers||[]);
+    det={
+      leader:CU.name||'you',
+      study:GD.study||'none set',
+      members:allM.map(function(m){return m.n+(m.r?' ('+m.r+')':'')+(m.real===false?' (placeholder)':'')}),
+      meetings:(GD.stats&&GD.stats.meetings)||0,
+      answered:(GD.stats&&GD.stats.answered)||0,
+      books:(GD.stats&&GD.stats.books)||0,
+      health:lastHealthScore||0,
+      start:GD.start||new Date().toISOString()
+    };
+  } else {
+    det=DEMO_GROUP_DETAILS[name]||{leader:'—',study:'—',members:[],meetings:0,answered:0,books:0,health:0,start:new Date().toISOString()};
+  }
+
+  document.getElementById('page-title').textContent=name;
+  topAction('<button class="btn btn-s btn-sm" onclick="goPage(\'groups\')">← all groups</button>');
+
+  var cls=det.health>=80?'var(--brand)':det.health>=60?'var(--accent)':'#E74C3C';
+  pc('<div class="g4" style="margin-bottom:18px">'
+    +statCard('📅',det.meetings,'meetings')
+    +statCard('✨',det.answered,'answered prayers')
+    +statCard('📖',det.books,'studies')
+    +statCard('⏳',yrs(det.start)+'yr','together')
+    +'</div>'
+    +'<div class="g2">'
+    +'<div>'
+    +'<div class="card" style="margin-bottom:18px">'
+    +'<div class="card-header"><span class="card-title">group info</span></div>'
+    +'<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted);margin-bottom:2px">leader</div><div style="font-weight:600">'+det.leader+'</div></div>'
+    +'<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;color:var(--muted);margin-bottom:2px">current study</div><div style="font-weight:600">'+det.study+'</div></div>'
+    +'<div style="padding:10px 0"><div style="font-size:12px;color:var(--muted);margin-bottom:2px">group started</div><div style="font-weight:600">'+new Date(det.start).toLocaleDateString('en-US',{month:'long',year:'numeric'})+'</div></div>'
+    +'</div>'
+    +'<div class="card">'
+    +'<div class="card-header"><span class="card-title">health score</span></div>'
+    +(det.health>0
+      ?'<div style="font-size:48px;font-weight:700;color:'+cls+';font-family:\'DM Serif Display\',serif;text-align:center;padding:16px 0">'+det.health+'%</div>'
+        +healthBar('',det.health)
+      :'<div style="text-align:center;padding:20px;color:var(--muted);font-size:14px">no assessment completed yet</div>')
+    +'</div>'
+    +'</div>'
+    +'<div>'
+    +'<div class="card">'
+    +'<div class="card-header"><span class="card-title">members ('+det.members.length+')</span></div>'
+    +(det.members.length===0
+      ?'<div style="padding:16px;color:var(--muted);font-size:14px">no members yet</div>'
+      :det.members.map(function(m){
+        var isPlaceholder=m.indexOf('placeholder')>-1;
+        var ini=m.charAt(0).toUpperCase();
+        return '<div class="member-row">'
+          +'<div class="m-av'+(isPlaceholder?' placeholder':'')+'">'+ini+'</div>'
+          +'<div style="flex:1"><div class="m-name">'+m+'</div></div>'
+          +'</div>';
+      }).join(''))
+    +'</div>'
+    +'</div>'
     +'</div>');
 }
 
@@ -1598,33 +1674,44 @@ function pgGroups(){
    PAGE: MINISTRY - GROUP HEALTH OVERVIEW
    ============================================================ */
 function pgMinHealth(){
+  // Fix #6: This is the MINISTRY health overview — shows all groups' scores, not the check-in form.
+  // Fix #7: Add survey editor button for ministry leaders.
+  topAction('<button class="btn btn-g btn-sm" onclick="modalEditSurvey()">✏️ edit survey questions</button>');
+
   if(!DEMO){
-    var hasGroup=GD&&GD.name;
-    var hasScore=lastHealthScore>0;
-    if(!hasGroup){
-      pc(empty('💚','no health data yet','health assessments will appear here once group members complete their first check-in.',''));
+    // Build groups list from real data
+    var groups=[];
+    if(GD&&GD.name) groups.push({n:GD.name, h:lastHealthScore||0, assessed:lastHealthScore>0});
+
+    if(groups.length===0){
+      pc(empty('💚','no health data yet','health assessments will appear here once group members complete their first check-in.',
+        '<button class="btn btn-p btn-sm" onclick="goPage(\'assess\')">take your first check-in →</button>'));
       return;
     }
-    pc((hasScore
-      ?'<div class="g4" style="margin-bottom:18px">'
-        +statCard('💚',lastHealthScore+'%','latest health score')
-        +statCard('✅','1','group assessed')
-        +statCard('📈','—','vs last check-in')
-        +statCard('⚠️',lastHealthScore<75?'1':'0','need attention')
-        +'</div>'
-        +'<div class="card"><div class="card-header"><span class="card-title">health by group</span></div>'
-        +healthBar(GD.name,lastHealthScore)
-        +(lastHealthScore<75
-          ?'<div class="banner banner-orange" style="margin-top:14px">⚠️ <strong>'+GD.name+'</strong> is below the healthy threshold. Consider checking in with your group leader.</div>'
-          :'')
-        +'</div>'
-      :'<div class="card" style="text-align:center;padding:36px 24px">'
-        +'<div style="font-size:36px;margin-bottom:12px">💚</div>'
-        +'<div style="font-family:\'DM Serif Display\',serif;font-size:20px;color:var(--dark);margin-bottom:8px">'+GD.name+' hasn\'t completed a check-in yet</div>'
-        +'<div style="font-size:14px;color:var(--muted);margin-bottom:18px">encourage your group to complete their first health assessment.</div>'
-        +'<button class="btn btn-p btn-sm" onclick="goPage(\'assess\')">take health check-in →</button>'
-        +'</div>'
-    ));
+    var assessed=groups.filter(function(g){return g.assessed});
+    var avg=assessed.length?Math.round(assessed.reduce(function(a,g){return a+g.h},0)/assessed.length):0;
+    var attn=groups.filter(function(g){return g.h>0&&g.h<75});
+
+    pc('<div class="g4" style="margin-bottom:18px">'
+      +statCard('💚',avg?avg+'%':'—','avg health score')
+      +statCard('✅',assessed.length+'/'+groups.length,'groups assessed')
+      +statCard('📈','—','vs last check-in')
+      +statCard('⚠️',attn.length,'need attention')
+      +'</div>'
+      +'<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">health by group</span></div>'
+      +groups.map(function(g){
+        return g.assessed
+          ? healthBar(g.n,g.h)
+          +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">no assessment yet — <a onclick="goPage(\'assess\')">take check-in →</a></div>'
+          : '<div style="padding:10px 0;font-size:14px;color:var(--muted)">'+g.n+' — no assessment yet</div>';
+      }).join('')
+      +(attn.length?'<div class="banner banner-orange" style="margin-top:10px">⚠️ groups below 75% need attention. encourage your leaders to run a check-in.</div>':'')
+      +'</div>'
+      +'<div class="card"><div class="card-header"><span class="card-title">health survey questions</span>'
+      +'<button class="btn btn-g btn-sm" onclick="modalEditSurvey()">✏️ edit</button></div>'
+      +'<div style="font-size:13px;color:var(--mid);margin-bottom:10px">these are the questions your groups answer during health check-ins.</div>'
+      +AQ.map(function(q,i){return '<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--dark)">'+(i+1)+'. '+q.q+'</div>'}).join('')
+      +'</div>');
     return;
   }
   // Demo mode
@@ -1634,8 +1721,13 @@ function pgMinHealth(){
     +statCard('📈','+8%','vs last month')
     +statCard('⚠️','2','need attention')
     +'</div>'
-    +'<div class="card"><div class="card-header"><span class="card-title">health by group</span></div>'
+    +'<div class="card" style="margin-bottom:18px"><div class="card-header"><span class="card-title">health by group</span></div>'
     +DEMO_GROUPS.map(function(g){return healthBar(g.n,g.h)}).join('')
+    +'</div>'
+    +'<div class="card"><div class="card-header"><span class="card-title">health survey questions</span>'
+    +'<button class="btn btn-g btn-sm" onclick="modalEditSurvey()">✏️ edit</button></div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:10px">these are the questions your groups answer during health check-ins.</div>'
+    +AQ.map(function(q,i){return '<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--dark)">'+(i+1)+'. '+q.q+'</div>'}).join('')
     +'</div>');
 }
 
@@ -1695,16 +1787,28 @@ function filterMinBible(f,el){
 }
 
 function resCardHtml(r, showStudyBtn, showDelete){
+  var safeId=r.id||r.title.replace(/\s/g,'_');
   var safeTitle=r.title.replace(/'/g,"\\'");
-  return '<div class="res-card" id="rc-'+(r.id||r.title.replace(/\s/g,'_'))+'">'
+  var sessionInfo=r.sessions&&r.sessions.length>0?' · '+r.sessions.length+'-session study':'';
+  return '<div class="res-card" id="rc-'+safeId+'">'
     +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
     +'<div style="flex:1">'
-    +'<div class="res-type">'+r.type+'</div>'
+    +'<div class="res-type">'+r.type+sessionInfo+'</div>'
     +'<div class="res-title">'+r.title+'</div>'
     +'<div class="res-desc">'+r.desc+'</div>'
-    +'<div class="res-tags">'+r.tags.map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
+    +'<div class="res-tags">'+(r.tags||[]).map(function(t){return '<span class="chip">'+t+'</span>'}).join('')+'</div>'
+    +(r.sessions&&r.sessions.length>0
+      ?'<div style="margin-top:8px;font-size:12px;color:var(--mid)">'
+        +r.sessions.map(function(s,i){return '<div style="padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--brand);font-weight:600">'+( i+1)+'.</span> '+s.title+(s.assignment?' <span style="color:var(--muted)">— '+s.assignment+'</span>':'')+'</div>'}).join('')
+        +'</div>'
+      :'')
     +'</div>'
-    +(showDelete?'<button onclick="deleteMinRes(\''+safeTitle+'\')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;line-height:1;flex-shrink:0" title="remove resource">✕</button>':'')
+    +(showDelete
+      ?'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+        +'<button onclick="modalEditMinRes(\''+safeId+'\')" style="background:transparent;border:none;color:var(--brand);cursor:pointer;font-size:13px;padding:2px 6px" title="edit resource">✏️</button>'
+        +'<button onclick="deleteMinRes(\''+safeTitle+'\')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;line-height:1" title="remove resource">✕</button>'
+        +'</div>'
+      :'')
     +'</div>'
     +(showStudyBtn?'<div class="res-actions" style="margin-top:10px"><button class="btn btn-p btn-sm" onclick="setStudy(\''+safeTitle+'\')">📖 set as current study</button></div>':'')
     +'</div>';
@@ -1780,8 +1884,12 @@ function pgMeeting(){
       :'<div style="font-size:14px;color:var(--muted)">no study selected yet.'+(isLeader()?' <a onclick="goPage(\'resources\')">pick one from study resources →</a>':'')+'</div>')
     +'</div>'
     +'<div class="card"><div class="card-header"><span class="card-title">💬 icebreaker for this meeting</span></div>'
-    +'<div class="iq-text" style="font-size:18px;margin-bottom:12px">"'+IQ[0]+'"</div>'
-    +'<button class="btn btn-s btn-sm" onclick="goPage(\'ice\')">see all icebreakers →</button>'
+    +'<div class="iq-text" style="font-size:18px;margin-bottom:12px">"'+currentIceQ()+'"</div>'
+    +'<div style="display:flex;gap:8px">'
+    +(iceSkip>0?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgMeeting()">← back</button>':'')
+    +'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgMeeting()">skip →</button>'
+    +'<button class="btn btn-s btn-sm" onclick="goPage(\'ice\')">see all →</button>'
+    +'</div>'
     +'</div>');
 }
 
@@ -1790,7 +1898,10 @@ function pgMeeting(){
    ============================================================ */
 function pgAttend(){
   if(!DEMO&&!CU.groupId){pc(empty('✅','no group yet','attendance tracking will be available once your group is set up.',''));return;}
-  var members=DEMO?DEMO_MEMBERS:[];
+  // Fix #12: use ALL members — real + placeholders — not just demo members
+  var members=DEMO?DEMO_MEMBERS:(
+    (CU.groupRealMembers||[]).concat(CU.placeholderMembers||[])
+  );
   if(!isLeader()){pc(empty('✅','attendance','only group leaders can take attendance.',''));return;}
   if(members.length===0){pc(empty('✅','no members yet','add members to your group to start tracking attendance.','<button class="btn btn-p" onclick="goPage(\'members\')">manage members →</button>'));return;}
   topAction('<button class="btn btn-p btn-sm" onclick="saveAttendance()">save attendance</button>');
@@ -1819,16 +1930,15 @@ function saveAttendance(){closeModal();toast('attendance saved ✅');}
    PAGE: PRAYER WALL
    ============================================================ */
 function pgPrayers(){
-  topAction('<button class="btn btn-p btn-sm" onclick="modalAddPrayer()">+ add prayer</button>');
+  topAction('<button class="btn btn-p btn-sm" onclick="modalAddPrayer()">+ add prayer request</button>');
   if(!DEMO&&!CU.groupId){
-    pc(empty('🙏','prayer wall','once your group is set up, members can share prayer requests here.',
-      '<button class="btn btn-p btn-sm" onclick="modalAddPrayer()">+ add first prayer</button>'));
+    pc(empty('🙏','prayer wall','once your group is set up, members can share prayer requests here.',''));
     return;
   }
-  var list=DEMO?PRAYERS:[];
+  // Always use PRAYERS — it's populated for both demo (DEMO_PRAYERS) and real users (via submitPrayer)
+  var list=PRAYERS;
   if(list.length===0){
-    pc(empty('🙏','no prayers yet','be the first to share something with your group!',
-      '<button class="btn btn-p btn-sm" onclick="modalAddPrayer()">+ add prayer request</button>'));
+    pc(empty('🙏','no prayers yet','be the first to share something with your group!',''));
     return;
   }
   var active=list.filter(function(p){return !p.ans});
@@ -1876,17 +1986,25 @@ function filterPrayers(f,el){
 /* ============================================================
    PAGE: ICEBREAKER
    ============================================================ */
+// Shared icebreaker state — used by group home, next meeting, and icebreaker pages
 var iceSkip=0;
-function pgIce(){
+function currentIceIdx(){
   var meetingNum=(GD&&GD.stats?GD.stats.meetings:0);
-  var qi=(meetingNum+iceSkip)%IQ.length;
+  return ((meetingNum+iceSkip)%IQ.length+IQ.length)%IQ.length;
+}
+function currentIceQ(){ return IQ[currentIceIdx()]; }
+function pgIce(){
+  var qi=currentIceIdx();
+  var canBack=iceSkip>0;
   pc('<div class="iq-card" style="margin-bottom:20px">'
     +'<div class="iq-label">💬 this meeting\'s question</div>'
     +'<div class="iq-text">"'+IQ[qi]+'"</div>'
     +'<div class="iq-footer">'
     +'<span class="iq-tip">advances after each meeting is logged 🌀</span>'
+    +'<div style="display:flex;gap:8px">'
+    +(canBack?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgIce()">← back</button>':'')
     +'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgIce()">skip →</button>'
-    +'</div></div>'
+    +'</div></div></div>'
     +'<div class="card"><div class="card-header"><span class="card-title">how to use this</span></div>'
     +'<div style="font-size:14px;color:var(--mid);line-height:1.8">'
     +'<p>📌 <strong>before your study:</strong> share this question and give everyone 1-2 minutes to think, then go around the group.</p>'
@@ -1905,23 +2023,35 @@ function pgIce(){
 /* ============================================================
    PAGE: SCHEDULING POLL
    ============================================================ */
+// Unified slot list — demo starts with sample data, real accounts start empty
+var SCHED_SLOTS=DEMO?[
+  {id:1,day:'Tuesday',date:'March 4',time:'7:30 PM',votes:4},
+  {id:2,day:'Wednesday',date:'March 5',time:'7:00 PM',votes:6},
+  {id:3,day:'Thursday',date:'March 6',time:'7:30 PM',votes:3},
+  {id:4,day:'Saturday',date:'March 8',time:'10:00 AM',votes:2}
+]:[];
+
 function pgSched(){
   if(!DEMO&&!CU.groupId){pc(empty('🗓️','no group yet','scheduling polls will be available once your group is set up.',''));return;}
-  var slots=DEMO?DEMO_SCHED:[];
-  if(isLeader()) topAction('<button class="btn btn-p btn-sm" onclick="modalAddSlot()">+ add time slot</button>');
+  if(isLeader()) topAction(
+    '<button class="btn btn-p btn-sm" onclick="modalAddSlot()">+ add time slot</button>'
+    +(SCHED_SLOTS.length>0?'<button class="btn btn-s btn-sm" style="margin-left:8px" onclick="publishPoll()">📢 publish poll</button>':'')
+  );
   pc('<div class="card"><div class="card-header"><span class="card-title">vote for the best time</span><span class="card-note">pick all that work for you</span></div>'
-    +(slots.length===0
-      ?'<div style="text-align:center;padding:28px;color:var(--muted)">no time slots yet'+(isLeader()?' - add some above':'')+'.</div>'
-      :slots.map(function(s){
-        var pct=Math.round((s.votes/8)*100);
+    +(SCHED_SLOTS.length===0
+      ?'<div style="text-align:center;padding:28px;color:var(--muted)">no time slots yet'+(isLeader()?' — add some above':'')+'.</div>'
+      :SCHED_SLOTS.map(function(s){
+        var maxVotes=Math.max.apply(null,SCHED_SLOTS.map(function(x){return x.votes||0}))||1;
+        var pct=Math.round(((s.votes||0)/maxVotes)*100);
         var voted=votedSlots.has(s.id);
         return '<div class="poll-slot'+(voted?' voted':'')+'">'
           +'<div class="poll-bar-wrap">'
           +'<div class="poll-bar-label">'+s.day+' · '+s.date+' at '+s.time+'</div>'
           +'<div class="poll-bar-bg"><div class="poll-bar-fill" style="width:'+pct+'%"></div></div>'
-          +'<div class="poll-count">'+s.votes+' vote'+(s.votes!==1?'s':'')+'</div>'
+          +'<div class="poll-count">'+(s.votes||0)+' vote'+((s.votes||0)!==1?'s':'')+'</div>'
           +'</div>'
           +'<button class="poll-vote'+(voted?' voted':'')+'" onclick="toggleVote('+s.id+',this)">'+(voted?'✓ voted':'vote')+'</button>'
+          +(isLeader()?'<button onclick="deleteSlot('+s.id+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 4px;margin-left:4px" title="remove slot">✕</button>':'')
           +'</div>';
       }).join(''))
     +'</div>');
@@ -1931,14 +2061,23 @@ function toggleVote(id,btn){
     votedSlots.delete(id);
     btn.className='poll-vote'; btn.textContent='vote';
     btn.closest('.poll-slot').classList.remove('voted');
-    var slot=DEMO_SCHED.find(function(s){return s.id===id}); if(slot) slot.votes--;
+    var slot=SCHED_SLOTS.find(function(s){return s.id===id}); if(slot) slot.votes=(slot.votes||1)-1;
   } else {
     votedSlots.add(id);
     btn.className='poll-vote voted'; btn.textContent='✓ voted';
     btn.closest('.poll-slot').classList.add('voted');
-    var slot=DEMO_SCHED.find(function(s){return s.id===id}); if(slot) slot.votes++;
+    var slot=SCHED_SLOTS.find(function(s){return s.id===id}); if(slot) slot.votes=(slot.votes||0)+1;
   }
   toast('vote saved ✅');
+}
+function deleteSlot(id){
+  var idx=SCHED_SLOTS.findIndex(function(s){return s.id===id});
+  if(idx>-1) SCHED_SLOTS.splice(idx,1);
+  votedSlots.delete(id);
+  pgSched();
+}
+function publishPoll(){
+  toast('poll shared with your group 📢');
 }
 
 /* ============================================================
@@ -1952,17 +2091,33 @@ function pgRotation(){
   if(!DEMO&&!CU.groupId){pc(empty('🏡','location rotation','add group members\' addresses to rotate meeting locations.',''));return;}
   if(isLeader()) topAction('<button class="btn btn-p btn-sm" onclick="modalAddHost()">+ add host</button>');
   pc('<div class="card">'
-    +'<div class="card-header"><span class="card-title">hosting rotation</span></div>'
+    +'<div class="card-header"><span class="card-title">hosting rotation</span>'
+    +'<span class="card-note">drag to reorder — first is next up</span></div>'
     +(ROTATION.length===0
-      ?'<div style="text-align:center;padding:24px;color:var(--muted)">no hosts added yet'+(isLeader()?' - add some above':'')+'.</div>'
+      ?'<div style="text-align:center;padding:24px;color:var(--muted)">no hosts added yet'+(isLeader()?' — add some above':'')+'.</div>'
       :ROTATION.map(function(h,i){
-        return '<div class="member-row">'
+        return '<div class="member-row" id="rot-'+i+'">'
           +'<div class="m-av" style="background:'+(i===0?'var(--accent)':'var(--brand)')+'">'+(i+1)+'</div>'
-          +'<div><div class="m-name">'+h.n+'</div><div class="m-role">'+h.a+'</div></div>'
-          +(i===0?'<span class="badge badge-green" style="margin-left:auto">next up!</span>':'')
+          +'<div style="flex:1"><div class="m-name">'+h.n+'</div><div class="m-role">'+h.a+'</div></div>'
+          +(i===0?'<span class="badge badge-green">next up!</span>':'')
+          +(isLeader()
+            ?'<div style="display:flex;gap:4px;margin-left:8px">'
+              +(i>0?'<button onclick="rotMove('+i+','+(i-1)+')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px" title="move up">↑</button>':'<span style="width:30px"></span>')
+              +(i<ROTATION.length-1?'<button onclick="rotMove('+i+','+(i+1)+')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px" title="move down">↓</button>':'<span style="width:30px"></span>')
+              +'<button onclick="rotRemove('+i+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px" title="remove">✕</button>'
+              +'</div>'
+            :'')
           +'</div>';
       }).join(''))
     +'</div>');
+}
+function rotMove(from,to){
+  var tmp=ROTATION[from]; ROTATION[from]=ROTATION[to]; ROTATION[to]=tmp;
+  pgRotation();
+}
+function rotRemove(i){
+  ROTATION.splice(i,1);
+  pgRotation(); toast('host removed');
 }
 
 /* ============================================================
@@ -2043,10 +2198,11 @@ function pgMiles(){
   var visible=computeMilestones(stats,yearsNum,DEMO?82:0);
 
   var earned=visible.filter(function(m){return m.earned;});
-  var upcoming=visible.filter(function(m){return !m.earned&&m.type!=='special';});
-  var special=visible.filter(function(m){return m.type==='special';});
+  var upcoming=visible.filter(function(m){return !m.earned&&m.type!=='special'&&m.type!=='serving';});
+  var serving=visible.filter(function(m){return m.type==='serving';});
+  // spirit-led (type==='special') hidden for phase 2
 
-  var typeLabels={meetings:'meetings',years:'time together',prayers:'prayer',answered:'answered prayer',books:'studies',health:'group health',special:'spirit-led moments'};
+  var typeLabels={meetings:'meetings',years:'time together',prayers:'prayer',answered:'answered prayer',books:'studies',health:'group health',serving:'service'};
 
   // Group upcoming by type for nicer display
   var upByType={};
@@ -2099,18 +2255,18 @@ function pgMiles(){
         }).join('')
       :'')
 
-    // SPIRIT-LED SPECIAL BADGES
-    +'<div class="sec-label">✨ spirit-led moments</div>'
-    +'<div style="font-size:13px;color:var(--mid);margin-bottom:12px;line-height:1.6">these can\'t be counted — only celebrated. mark them when they happen.'+(isLeader()?'':' your leader can award these.')+'</div>'
+    // SERVING MILESTONES
+    +'<div class="sec-label">🫶 serving together</div>'
+    +'<div style="font-size:13px;color:var(--mid);margin-bottom:12px;line-height:1.6">mark these when your group completes a service project together.'+(isLeader()?'':' your leader can mark these.')+'</div>'
     +'<div class="badge-grid">'
-    +special.map(function(b){
+    +serving.map(function(b){
       return '<div class="milestone'+(b.earned?' earned':'')+'" '
-        +(isLeader()?'onclick="toggleSpecial(\''+b.n+'\')" style="cursor:pointer" title="click to award this milestone"':'')+' >'
+        +(isLeader()?'onclick="toggleSpecial(\''+b.n+'\')" style="cursor:pointer" title="click to mark this milestone"':'')+' >'
         +'<div class="milestone-em">'+b.em+'</div>'
         +'<div class="milestone-name">'+b.n+'</div>'
         +'<div class="milestone-desc">'+b.d+'</div>'
-        +(b.earned?'<div style="font-size:10px;color:var(--brand);margin-top:4px;font-weight:600">✓ earned!</div>'
-          :(isLeader()?'<div style="font-size:10px;color:var(--muted);margin-top:4px">click to award</div>':''))
+        +(b.earned?'<div style="font-size:10px;color:var(--brand);margin-top:4px;font-weight:600">✓ completed!</div>'
+          :(isLeader()?'<div style="font-size:10px;color:var(--muted);margin-top:4px">click to mark done</div>':''))
         +'</div>';
     }).join('')
     +'</div>');
@@ -2228,8 +2384,10 @@ function pgMembers(){
           +'<div class="m-role">'+m.r+'</div></div>'
           +'<div class="m-actions">'
           +(placeholder
-            ?'<span class="badge badge-grey">not yet joined</span><button class="btn btn-g btn-sm" onclick="removePlaceholder(\''+m.n+'\')">remove</button>'
-            :'<span class="badge badge-green">✓ joined</span><button class="btn btn-g btn-sm" onclick="modalEditRole(\''+m.n+'\')">edit role</button>')
+            ?'<span class="badge badge-grey">not yet joined</span>'
+              +'<button class="btn btn-g btn-sm" onclick="modalMergePlaceholder(\''+m.n.replace(/'/g,"\\'")+'\')">merge</button>'
+              +'<button class="btn btn-g btn-sm" onclick="removePlaceholder(\''+m.n.replace(/'/g,"\\'")+'\')">remove</button>'
+            :'<span class="badge badge-green">✓ joined</span><button class="btn btn-g btn-sm" onclick="modalEditRole(\''+m.n.replace(/'/g,"\\'")+'\')">edit role</button>')
           +'</div></div>';
       }).join(''))
     +'</div>');
@@ -2238,6 +2396,51 @@ function removePlaceholder(name){
   CU.placeholderMembers=(CU.placeholderMembers||[]).filter(function(m){return m.n!==name});
   DEMO_MEMBERS.splice(DEMO_MEMBERS.findIndex(function(m){return m.n===name&&!m.real}),1);
   pgMembers(); toast('placeholder removed');
+}
+
+function modalMergePlaceholder(placeholderName){
+  var realMembers=DEMO?DEMO_MEMBERS.filter(function(m){return m.real}):(CU.groupRealMembers||[]);
+  openModal(mClose()
+    +'<h2>🔗 merge with real account</h2>'
+    +'<div class="modal-sub">When a member joins using your invite code, link their real account to the placeholder <strong>'+placeholderName+'</strong> so their history and attendance carries over.</div>'
+    +'<div class="fg"><label>real member\'s name (as they appear in your member list)</label>'
+    +'<select id="merge-real">'
+    +(realMembers.length===0
+      ?'<option value="">no real members yet — share your invite code first</option>'
+      :realMembers.map(function(m){return '<option value="'+m.n+'">'+m.n+'</option>'}).join(''))
+    +'</select></div>'
+    +'<div class="banner banner-green" style="margin-top:4px">💡 the placeholder\'s name, role, and attendance history will be merged into the real account.</div>'
+    +(realMembers.length>0
+      ?'<button class="btn btn-p btn-full" onclick="doMerge(\''+placeholderName.replace(/'/g,"\\'")+'\')">merge accounts</button>'
+      :'<button class="btn btn-g btn-full" onclick="closeModal()">ok, got it</button>')
+  );
+}
+function doMerge(placeholderName){
+  var sel=document.getElementById('merge-real');
+  if(!sel||!sel.value){toast('please select a real member 😊');return;}
+  var realName=sel.value;
+
+  // Find placeholder data
+  var phArr=DEMO?DEMO_MEMBERS:(CU.placeholderMembers||[]);
+  var ph=phArr.find(function(m){return m.n===placeholderName&&m.real===false});
+
+  // Find real member
+  var realArr=DEMO?DEMO_MEMBERS:(CU.groupRealMembers||[]);
+  var real=realArr.find(function(m){return m.n===realName&&m.real!==false});
+
+  if(ph&&real){
+    // Copy role from placeholder if real member has no custom role
+    if(ph.r&&(!real.r||real.r==='group member')) real.r=ph.r;
+    // Mark placeholder merged (remove it)
+    if(DEMO){
+      var idx=DEMO_MEMBERS.findIndex(function(m){return m.n===placeholderName&&!m.real});
+      if(idx>-1) DEMO_MEMBERS.splice(idx,1);
+    } else {
+      CU.placeholderMembers=(CU.placeholderMembers||[]).filter(function(m){return m.n!==placeholderName});
+    }
+  }
+  closeModal(); pgMembers();
+  toast('✅ '+placeholderName+' merged into '+realName+'\'s account');
 }
 
 /* ============================================================
@@ -2393,35 +2596,156 @@ function modalInviteCode(){
     +'<button class="btn btn-p btn-full" onclick="navigator.clipboard.writeText(\''+code+'\');toast(\'code copied! 📋\')">copy code</button>');
 }
 
+// Scratch state for ministry resource session building
+var newResSessions=[];
+
 function modalAddRes(scope){
   var label=scope==='ministry'?'all groups in your ministry':'your group only';
+  newResSessions=[];
   openModal(mClose()+'<h2>📚 add a resource</h2>'
     +'<div class="modal-sub">this resource will be visible to <strong>'+label+'</strong>.</div>'
     +'<div class="fg"><label>title</label><input type="text" id="res-title" placeholder="e.g. The Chosen - Season 1"></div>'
     +'<div class="fg"><label>type</label><select id="res-type"><option>Bible Study</option><option>Video Series</option><option>Book</option><option>Devotional</option><option>Podcast</option><option>Other</option></select></div>'
     +'<div class="fg"><label>description</label><textarea rows="3" id="res-desc" placeholder="brief description of what this resource covers..."></textarea></div>'
     +'<div class="fg"><label>topic tags (optional, comma-separated)</label><input type="text" id="res-tags-input" placeholder="e.g. faith, prayer, community"></div>'
+    +(scope==='ministry'
+      ?'<div style="border-top:1px solid var(--border);margin:16px 0 12px"></div>'
+        +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:4px">sessions (optional)</div>'
+        +'<div style="font-size:13px;color:var(--muted);margin-bottom:12px">add sessions so groups can follow along week by week.</div>'
+        +'<div id="new-sessions-list"></div>'
+        +'<button class="btn btn-s btn-full" style="margin-bottom:14px" onclick="addNewResSession()">+ add session</button>'
+      :'')
     +'<button class="btn btn-p btn-full" onclick="saveResource(\''+scope+'\')">add resource</button>');
+}
+function addNewResSession(){
+  // Save any existing text inputs first
+  newResSessions.forEach(function(s,i){
+    var tEl=document.getElementById('nrs-title-'+i);
+    var aEl=document.getElementById('nrs-assign-'+i);
+    if(tEl) s.title=tEl.value;
+    if(aEl) s.assignment=aEl.value;
+  });
+  newResSessions.push({title:'Session '+(newResSessions.length+1),assignment:''});
+  renderNewSessions();
+}
+function removeNewResSession(i){
+  newResSessions.forEach(function(s,j){
+    var tEl=document.getElementById('nrs-title-'+j);
+    var aEl=document.getElementById('nrs-assign-'+j);
+    if(tEl) s.title=tEl.value;
+    if(aEl) s.assignment=aEl.value;
+  });
+  newResSessions.splice(i,1);
+  renderNewSessions();
+}
+function renderNewSessions(){
+  var el=document.getElementById('new-sessions-list');
+  if(!el) return;
+  el.innerHTML=newResSessions.map(function(s,i){
+    return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:8px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--brand)">session '+(i+1)+'</div>'
+      +'<button onclick="removeNewResSession('+i+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>'
+      +'</div>'
+      +'<input type="text" id="nrs-title-'+i+'" value="'+s.title.replace(/"/g,'&quot;')+'" placeholder="session title" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff;margin-bottom:6px">'
+      +'<input type="text" id="nrs-assign-'+i+'" value="'+s.assignment.replace(/"/g,'&quot;')+'" placeholder="reading or assignment (optional)" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff">'
+      +'</div>';
+  }).join('');
 }
 function saveResource(scope){
   var title=document.getElementById('res-title').value.trim();
   var type=document.getElementById('res-type').value;
   var desc=document.getElementById('res-desc').value.trim();
-  var tags=document.getElementById('res-tags-input')?document.getElementById('res-tags-input').value.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
+  var tagsEl=document.getElementById('res-tags-input');
+  var tags=tagsEl?tagsEl.value.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
   if(!title){toast('please enter a title 😊');return;}
+  // Collect final session values
+  if(scope==='ministry'){
+    newResSessions.forEach(function(s,i){
+      var tEl=document.getElementById('nrs-title-'+i);
+      var aEl=document.getElementById('nrs-assign-'+i);
+      if(tEl) s.title=tEl.value;
+      if(aEl) s.assignment=aEl.value;
+    });
+  }
   var res={id:'mr'+Date.now(),title:title,type:type,desc:desc,tags:tags};
+  if(newResSessions.length>0) res.sessions=JSON.parse(JSON.stringify(newResSessions));
   if(scope==='ministry'){
     var arr=DEMO?MINISTRY_RESOURCES:REAL_MINISTRY_RESOURCES;
     arr.unshift(res);
-    closeModal();
-    pgMinRes();
+    closeModal(); pgMinRes();
   } else {
     if(!CU.groupResources) CU.groupResources=[];
     CU.groupResources.unshift(res);
-    closeModal();
-    pgResources();
+    closeModal(); pgResources();
   }
   toast('resource added 📚');
+}
+
+function modalEditMinRes(id){
+  var arr=DEMO?MINISTRY_RESOURCES:REAL_MINISTRY_RESOURCES;
+  var res=arr.find(function(r){return r.id===id});
+  if(!res){toast('resource not found');return;}
+  var html=mClose()+'<h2>✏️ edit resource</h2>'
+    +'<div class="fg"><label>title</label><input type="text" id="er-title" value="'+res.title.replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="fg"><label>type</label><select id="er-type"><option>Bible Study</option><option>Video Series</option><option>Book</option><option>Devotional</option><option>Podcast</option><option>Other</option></select></div>'
+    +'<div class="fg"><label>description</label><textarea rows="3" id="er-desc">'+res.desc+'</textarea></div>'
+    +'<div style="border-top:1px solid var(--border);margin:14px 0 10px"></div>'
+    +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:10px">sessions</div>'
+    +'<div id="edit-sessions-list">'
+    +(res.sessions||[]).map(function(s,i){
+      return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--brand)">session '+(i+1)+'</div>'
+        +'</div>'
+        +'<input type="text" id="ers-title-'+i+'" value="'+s.title.replace(/"/g,'&quot;')+'" placeholder="session title" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff;margin-bottom:6px">'
+        +'<input type="text" id="ers-assign-'+i+'" value="'+(s.assignment||'').replace(/"/g,'&quot;')+'" placeholder="assignment (optional)" style="width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:8px 10px;font-family:inherit;font-size:13px;background:#fff">'
+        +'</div>';
+    }).join('')
+    +'</div>'
+    +'<button class="btn btn-s btn-full" style="margin-bottom:12px" onclick="addEditResSession(\''+id+'\')">+ add session</button>'
+    +'<button class="btn btn-p btn-full" onclick="saveEditMinRes(\''+id+'\')">save changes</button>';
+  // Set type dropdown after render
+  openModal(html);
+  setTimeout(function(){
+    var sel=document.getElementById('er-type');
+    if(sel) sel.value=res.type;
+  },10);
+}
+function addEditResSession(id){
+  var arr=DEMO?MINISTRY_RESOURCES:REAL_MINISTRY_RESOURCES;
+  var res=arr.find(function(r){return r.id===id});
+  if(!res) return;
+  if(!res.sessions) res.sessions=[];
+  // Save existing values
+  res.sessions.forEach(function(s,i){
+    var tEl=document.getElementById('ers-title-'+i);
+    var aEl=document.getElementById('ers-assign-'+i);
+    if(tEl) s.title=tEl.value;
+    if(aEl) s.assignment=aEl.value;
+  });
+  res.sessions.push({title:'Session '+(res.sessions.length+1),assignment:''});
+  modalEditMinRes(id);
+}
+function saveEditMinRes(id){
+  var arr=DEMO?MINISTRY_RESOURCES:REAL_MINISTRY_RESOURCES;
+  var res=arr.find(function(r){return r.id===id});
+  if(!res) return;
+  var titleEl=document.getElementById('er-title');
+  var typeEl=document.getElementById('er-type');
+  var descEl=document.getElementById('er-desc');
+  if(titleEl) res.title=titleEl.value;
+  if(typeEl) res.type=typeEl.value;
+  if(descEl) res.desc=descEl.value;
+  if(res.sessions){
+    res.sessions.forEach(function(s,i){
+      var tEl=document.getElementById('ers-title-'+i);
+      var aEl=document.getElementById('ers-assign-'+i);
+      if(tEl) s.title=tEl.value;
+      if(aEl) s.assignment=aEl.value;
+    });
+  }
+  closeModal(); pgMinRes(); toast('resource updated ✅');
 }
 
 function modalAddHost(){
@@ -2485,10 +2809,10 @@ function modalAddSlot(){
 }
 function saveSlot(){
   var day=document.getElementById('sl-day').value;
-  var date=document.getElementById('sl-date').value;
+  var date=document.getElementById('sl-date').value.trim();
   var time=document.getElementById('sl-time').value;
   if(!date){toast('please enter a date 😊');return;}
-  DEMO_SCHED.push({id:Date.now(),day:day,date:date,time:time,votes:0});
+  SCHED_SLOTS.push({id:Date.now(),day:day,date:date,time:time,votes:0});
   closeModal(); pgSched(); toast('slot added 🗓️');
 }
 
