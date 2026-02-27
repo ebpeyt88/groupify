@@ -1325,7 +1325,7 @@ async function loadProfile(user){
     init:initials(p.full_name||user.email),
     type:p.role||'member',
     role:typeMap[p.role]||'group member',
-    groupId:p.group_id||null,
+    groupId:    saved.groupId || p.group_id || null,
     ministryId:p.ministry_id||(p.role==='ministry'?user.id:null),
     churchName:p.church_name||'',
     groupCode:  grpCode,
@@ -1360,7 +1360,8 @@ async function loadProfile(user){
 
 function buildPayload(){
   return {
-    v:2, // version tag so we can migrate later
+    v:2,
+    groupId:   CU.groupId,   // ← persisted so it survives logout
     groupCode: CU.groupCode,
     minCode:   CU.minCode,
     groupResources:    CU.groupResources||[],
