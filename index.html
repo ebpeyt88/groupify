@@ -3088,37 +3088,63 @@ function saveRole(name, isPlaceholder){
 // Called automatically on first login when user signed up with a group invite code.
 // Finds the leader who owns that code and adds this member to their group.
 // Find the leader who owns a given group invite code.
-// Returns {id, full_name} or null.
+// Returns {id, full_name, data} or null.
 async function findLeaderByCode(code){
   if(!code||!sb) return null;
   code=code.trim().toUpperCase();
 
-  // Primary lookup: ministry_id column stores the leader's groupCode (set on login)
-  var {data:direct}=await sb.from('profiles')
-    .select('id,full_name,app_data')
-    .eq('ministry_id', code)
-    .in('role',['leader','ministry'])
-    .maybeSingle();
-  if(direct){
-    var d={};
-    try{ if(direct.app_data) d=JSON.parse(direct.app_data); }catch(e){}
-    return {id:direct.id, name:direct.full_name, data:d};
-  }
+  // Fetch ALL profiles so we can see everything in debug mode
+  var {data:allProfiles, error:allErr}=await sb.from('profiles').select('id,full_name,role,ministry_id,app_data');
 
-  // Fallback: scan all leaders and check deterministic code
-  // (catches leaders who haven't logged in since this fix was deployed)
-  var {data:profiles}=await sb.from('profiles')
-    .select('id,full_name,app_data')
-    .in('role',['leader','ministry']);
-  for(var i=0;i<(profiles||[]).length;i++){
-    var prof=profiles[i];
-    try{
-      if(genCode('GRP',prof.id+'_grp')===code){
-        var d2={};
-        try{ if(prof.app_data) d2=JSON.parse(prof.app_data); }catch(e){}
-        return {id:prof.id, name:prof.full_name, data:d2};
-      }
-    }catch(e){}
+  // DEBUG: show what we got back from Supabase
+  var debugLines=['<b>Searching for: '+code+'</b><br>Found '+((allProfiles||[]).length)+' profiles total:<br><br>'];
+  (allProfiles||[]).forEach(function(pr){
+    var appData={};
+    try{ if(pr.app_data) appData=JSON.parse(pr.app_data); }catch(e){}
+    var deterCode=genCode('GRP',pr.id+'_grp');
+    debugLines.push(
+      '<div style="border:1px solid #ccc;padding:6px;margin-bottom:6px;font-size:11px;text-align:left">'
+      +'<b>'+pr.full_name+'</b> ('+pr.role+')<br>'
+      +'ministry_id: '+(pr.ministry_id||'null')+'<br>'
+      +'app_data.groupCode: '+(appData.groupCode||'null')+'<br>'
+      +'deterCode: '+deterCode+'<br>'
+      +'<b>match ministry_id: '+(pr.ministry_id===code)+'</b> | '
+      +'<b>match appData: '+(appData.groupCode===code)+'</b> | '
+      +'<b>match deter: '+(deterCode===code)+'</b>'
+      +'</div>'
+    );
+  });
+  openModal('<div style="max-height:70vh;overflow-y:auto;padding:8px">'+debugLines.join('')+'<button class="btn btn-p btn-full" onclick="closeModal()">close</button></div>');
+
+  if(allErr){ console.log('profiles fetch error:',allErr); return null; }
+
+  // Primary: match ministry_id
+  for(var i=0;i<(allProfiles||[]).length;i++){
+    var pr=allProfiles[i];
+    if((pr.role==='leader'||pr.role==='ministry') && pr.ministry_id===code){
+      var d={};
+      try{ if(pr.app_data) d=JSON.parse(pr.app_data); }catch(e){}
+      return {id:pr.id, name:pr.full_name, data:d};
+    }
+  }
+  // Fallback: match app_data.groupCode
+  for(var i=0;i<(allProfiles||[]).length;i++){
+    var pr=allProfiles[i];
+    if(pr.role==='leader'||pr.role==='ministry'){
+      try{
+        var d2=pr.app_data?JSON.parse(pr.app_data):{};
+        if(d2.groupCode===code) return {id:pr.id, name:pr.full_name, data:d2};
+      }catch(e){}
+    }
+  }
+  // Fallback: deterministic code
+  for(var i=0;i<(allProfiles||[]).length;i++){
+    var pr=allProfiles[i];
+    if((pr.role==='leader'||pr.role==='ministry') && genCode('GRP',pr.id+'_grp')===code){
+      var d3={};
+      try{ if(pr.app_data) d3=JSON.parse(pr.app_data); }catch(e){}
+      return {id:pr.id, name:pr.full_name, data:d3};
+    }
   }
   return null;
 }
