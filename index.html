@@ -3093,30 +3093,41 @@ async function findLeaderByCode(code){
   if(!code||!sb) return null;
   code=code.trim().toUpperCase();
 
-  // Fetch ALL profiles so we can see everything in debug mode
+  // DEBUG: check auth session first
+  var sessionInfo='unknown';
+  try{
+    var sess=await sb.auth.getSession();
+    sessionInfo=sess.data&&sess.data.session?'logged in as '+sess.data.session.user.email:'NO SESSION';
+  }catch(e){ sessionInfo='session error: '+e.message; }
+
+  // Fetch ALL profiles
   var {data:allProfiles, error:allErr}=await sb.from('profiles').select('id,full_name,role,ministry_id,app_data');
 
-  // DEBUG: show what we got back from Supabase
-  var debugLines=['<b>Searching for: '+code+'</b><br>Found '+((allProfiles||[]).length)+' profiles total:<br><br>'];
+  // DEBUG modal
+  var lines=[
+    '<b>Auth:</b> '+sessionInfo+'<br>',
+    '<b>Searching for:</b> '+code+'<br>',
+    '<b>Error:</b> '+(allErr?allErr.message+' (code:'+allErr.code+')'  :'none')+'<br>',
+    '<b>Rows returned:</b> '+((allProfiles||[]).length)+'<br><br>'
+  ];
   (allProfiles||[]).forEach(function(pr){
     var appData={};
     try{ if(pr.app_data) appData=JSON.parse(pr.app_data); }catch(e){}
-    var deterCode=genCode('GRP',pr.id+'_grp');
-    debugLines.push(
+    var deterCode='';
+    try{ deterCode=genCode('GRP',pr.id+'_grp'); }catch(e){}
+    lines.push(
       '<div style="border:1px solid #ccc;padding:6px;margin-bottom:6px;font-size:11px;text-align:left">'
       +'<b>'+pr.full_name+'</b> ('+pr.role+')<br>'
       +'ministry_id: '+(pr.ministry_id||'null')+'<br>'
       +'app_data.groupCode: '+(appData.groupCode||'null')+'<br>'
       +'deterCode: '+deterCode+'<br>'
-      +'<b>match ministry_id: '+(pr.ministry_id===code)+'</b> | '
-      +'<b>match appData: '+(appData.groupCode===code)+'</b> | '
-      +'<b>match deter: '+(deterCode===code)+'</b>'
+      +'match ministry_id: '+(pr.ministry_id===code)+' | match appData: '+(appData.groupCode===code)+' | match deter: '+(deterCode===code)
       +'</div>'
     );
   });
-  openModal('<div style="max-height:70vh;overflow-y:auto;padding:8px">'+debugLines.join('')+'<button class="btn btn-p btn-full" onclick="closeModal()">close</button></div>');
+  openModal('<div style="max-height:70vh;overflow-y:auto;padding:8px;text-align:left">'+lines.join('')+'<button class="btn btn-p btn-full" onclick="closeModal()">close</button></div>');
 
-  if(allErr){ console.log('profiles fetch error:',allErr); return null; }
+  if(allErr){ return null; }
 
   // Primary: match ministry_id
   for(var i=0;i<(allProfiles||[]).length;i++){
