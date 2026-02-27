@@ -1327,10 +1327,15 @@ async function loadProfile(user){
     }catch(e){}
   }
 
-  // ── Step 3: Stable invite codes (deterministic hash of user.id) ──────────
-  // Even if saved={}, these codes will always be the same for this user
-  var grpCode=saved.groupCode||genCode('GRP',user.id+'_grp');
-  var minCode=saved.minCode||genCode('MIN',user.id+'_min');
+  // ── Step 3: Invite codes ─────────────────────────────────────────────────────
+  // For leaders/ministry: use the code stored in profiles.ministry_id if available
+  // (written there on login). Fall back to deterministic hash of user.id.
+  // This ensures the displayed code always matches what findLeaderByCode searches.
+  var isLeaderRole=(p.role==='leader'||p.role==='ministry');
+  var grpCode=(isLeaderRole&&p.ministry_id&&p.ministry_id.startsWith('GRP-'))
+    ? p.ministry_id
+    : genCode('GRP',user.id+'_grp');
+  var minCode=genCode('MIN',user.id+'_min');
 
   // ── Step 4: Reconstitute CU ──────────────────────────────────────────────
   var typeMap={ministry:'ministry leader',leader:'group leader',member:'group member'};
@@ -1399,7 +1404,18 @@ async function loadProfile(user){
     }catch(e){ console.log('leader GD fetch error:',e); }
   }
 
-  // ── Step 6: Persist immediately so codes are locked in ──────────────────
+  // ── Step 6: For leaders/ministry, write groupCode to profiles.ministry_id ───
+  // This is the reliable Supabase lookup column for findLeaderByCode.
+  // ministry_id is unused for these roles otherwise.
+  if((p.role==='leader'||p.role==='ministry') && CU.groupCode){
+    var storedCode=p.ministry_id||'';
+    if(storedCode!==CU.groupCode){
+      sb.from('profiles').update({ministry_id:CU.groupCode}).eq('id',user.id)
+        .then(function(){}).catch(function(){});
+    }
+  }
+
+  // ── Step 7: Persist locally ───────────────────────────────────────────────
   saveLocal();
   saveRemote();
 
@@ -3076,20 +3092,32 @@ function saveRole(name, isPlaceholder){
 async function findLeaderByCode(code){
   if(!code||!sb) return null;
   code=code.trim().toUpperCase();
-  // Fetch all leader/ministry profiles
-  var {data:profiles,error}=await sb.from('profiles').select('id,full_name,app_data').in('role',['leader','ministry']);
-  if(error||!profiles) return null;
-  for(var i=0;i<profiles.length;i++){
+
+  // Primary lookup: ministry_id column stores the leader's groupCode (set on login)
+  var {data:direct}=await sb.from('profiles')
+    .select('id,full_name,app_data')
+    .eq('ministry_id', code)
+    .in('role',['leader','ministry'])
+    .maybeSingle();
+  if(direct){
+    var d={};
+    try{ if(direct.app_data) d=JSON.parse(direct.app_data); }catch(e){}
+    return {id:direct.id, name:direct.full_name, data:d};
+  }
+
+  // Fallback: scan all leaders and check deterministic code
+  // (catches leaders who haven't logged in since this fix was deployed)
+  var {data:profiles}=await sb.from('profiles')
+    .select('id,full_name,app_data')
+    .in('role',['leader','ministry']);
+  for(var i=0;i<(profiles||[]).length;i++){
     var prof=profiles[i];
-    // First check: does their stored app_data have a matching groupCode?
     try{
-      var d=prof.app_data?JSON.parse(prof.app_data):{};
-      if(d.groupCode===code) return {id:prof.id,name:prof.full_name,data:d};
-    }catch(e){}
-    // Second check: does the deterministic code (from user ID) match?
-    // This works even when app_data hasn't been saved to Supabase yet
-    try{
-      if(genCode('GRP',prof.id+'_grp')===code) return {id:prof.id,name:prof.full_name,data:{}};
+      if(genCode('GRP',prof.id+'_grp')===code){
+        var d2={};
+        try{ if(prof.app_data) d2=JSON.parse(prof.app_data); }catch(e){}
+        return {id:prof.id, name:prof.full_name, data:d2};
+      }
     }catch(e){}
   }
   return null;
@@ -3434,7 +3462,7 @@ function caStep3(){
     body='<div class="fg"><label>group name</label><input type="text" id="ca-gname" placeholder="e.g. Thursday Night Crew"></div>'
       +'<div class="fg"><label>ministry invite code (optional)</label><input type="text" id="ca-mcode" placeholder="enter your ministry\'s code if you have one"></div>';
   } else {
-    body='<div class="fg"><label>group invite code</label><input type="text" id="ca-icode" placeholder="enter the code your group leader gave you"></div>';
+    body='<div class="banner banner-green" style="margin-bottom:0">👋 almost there! after creating your account, you\'ll enter your group\'s invite code to connect.</div>';
   }
   document.getElementById('ca3-body').innerHTML=body;
   showView('v-ca3');
@@ -3452,12 +3480,13 @@ async function caFinish(){
       meta.church_name=(document.getElementById('ca-church')||{value:''}).value.trim();
     } else if(caRole==='leader'){
       meta.ministry_code=(document.getElementById('ca-mcode')||{value:''}).value.trim();
-    } else {
-      meta.group_code=(document.getElementById('ca-icode')||{value:''}).value.trim();
     }
+    // No group_code at signup — member enters invite code after login
     var r=await sb.auth.signUp({email:email,password:pw,options:{data:meta,emailRedirectTo:'https://ebpeyt88.github.io/groupify/'}});
     if(r.error){toast('sign up failed: '+r.error.message+' 😕');btn.textContent='create account 🎉';btn.disabled=false;return;}
-    showView('v-confirm');
+    // Skip email confirmation screen (turned off in Supabase) — go straight to sign in
+    toast('account created! sign in to get started 🎉');
+    showView('v-signin');
   } catch(e){
     toast('error: '+e.message);
     btn.textContent='create account 🎉'; btn.disabled=false;
