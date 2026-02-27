@@ -1346,9 +1346,17 @@ async function loadProfile(user){
   if(saved.schedSlots)    SCHED_SLOTS=saved.schedSlots;
   if(saved.announcements) MINISTRY_ANNOUNCEMENTS=saved.announcements;
 
+  // ── Step 5b: Auto-join group if signup included an invite code ───────────
+  // This runs when a new member first logs in after signing up with a group code.
+  // Once joined (CU.groupId set), the code is cleared from metadata so it won't re-run.
+  var pendingCode=(user.user_metadata||{}).group_code;
+  if(pendingCode && !CU.groupId){
+    await autoJoinGroup(pendingCode);
+  }
+
   // ── Step 6: Persist immediately so codes are locked in ──────────────────
-  saveLocal(); // sync — happens before enterApp
-  saveRemote(); // async background — best effort Supabase sync
+  saveLocal();
+  saveRemote();
 
   enterApp();
 }
@@ -2955,6 +2963,50 @@ function saveRole(name, isPlaceholder){
   }
   closeModal(); pgMembers(); toast('role updated ✅');
   autoSave();
+}
+
+// Called automatically on first login when user signed up with a group invite code.
+// Finds the leader who owns that code and adds this member to their group.
+async function autoJoinGroup(code){
+  if(!code||!sb) return;
+  code=code.trim().toUpperCase();
+  try{
+    var matchProfile=null;
+    var {data:profiles}=await sb.from('profiles').select('id,app_data,full_name').in('role',['leader','ministry']);
+    (profiles||[]).forEach(function(prof){
+      if(matchProfile) return;
+      // Check stored app_data
+      try{
+        var d=prof.app_data?JSON.parse(prof.app_data):{};
+        if(d.groupCode===code){ matchProfile={id:prof.id,data:d,name:prof.full_name}; return; }
+      }catch(e){}
+      // Also check deterministic code (works even when app_data not yet saved to Supabase)
+      try{
+        if(genCode('GRP',prof.id+'_grp')===code) matchProfile={id:prof.id,data:{},name:prof.full_name};
+      }catch(e){}
+    });
+    if(!matchProfile) return; // code didn't match anyone — user can join manually later
+
+    // Add this member to the leader's saved data
+    var leaderData=matchProfile.data;
+    if(!leaderData.groupRealMembers) leaderData.groupRealMembers=[];
+    var alreadyIn=leaderData.groupRealMembers.find(function(m){return m.id===CU.id;});
+    if(!alreadyIn){
+      leaderData.groupRealMembers.push({id:CU.id,n:CU.name,r:'group member',i:CU.init,real:true});
+      // Write to leader's localStorage and Supabase
+      try{ localStorage.setItem('gfy_'+matchProfile.id, JSON.stringify(leaderData)); }catch(e){}
+      sb.from('profiles').update({app_data:JSON.stringify(leaderData)}).eq('id',matchProfile.id)
+        .then(function(){}).catch(function(){});
+    }
+
+    // Connect this member to the group
+    CU.groupId='linked-to-'+matchProfile.id;
+    GD=leaderData.GD||{name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+
+    // Clear the pending code from Supabase auth metadata so this doesn't re-run
+    sb.auth.updateUser({data:{group_code:''}}).then(function(){}).catch(function(){});
+
+  }catch(e){ console.log('autoJoinGroup error:',e); }
 }
 
 function modalJoinGroup(){
