@@ -1362,11 +1362,41 @@ async function loadProfile(user){
   if(saved.announcements) MINISTRY_ANNOUNCEMENTS=saved.announcements;
 
   // ── Step 5b: Auto-join group if signup included an invite code ───────────
-  // This runs when a new member first logs in after signing up with a group code.
-  // Once joined (CU.groupId set), the code is cleared from metadata so it won't re-run.
   var pendingCode=(user.user_metadata||{}).group_code;
   if(pendingCode && !CU.groupId){
     await autoJoinGroup(pendingCode);
+  }
+
+  // ── Step 5c: Leader/ministry — pull real members from Supabase ───────────
+  if((p.role==='leader'||p.role==='ministry') && CU.groupId){
+    try{
+      var {data:memberRows}=await sb.from('profiles')
+        .select('id,full_name,role')
+        .eq('group_id', user.id)
+        .neq('id', user.id);
+      if(memberRows&&memberRows.length>0){
+        var existing=CU.groupRealMembers||[];
+        memberRows.forEach(function(m){
+          var already=existing.find(function(e){return e.id===m.id;});
+          if(!already){
+            existing.push({id:m.id,n:m.full_name,r:'group member',i:initials(m.full_name),real:true});
+          }
+        });
+        CU.groupRealMembers=existing;
+      }
+    }catch(e){ console.log('member fetch error:',e); }
+  }
+
+  // ── Step 5d: Member — fetch group data from leader if GD is empty ─────────
+  // Members have group_id = leader's user ID; pull the leader's GD so they see the group
+  if(p.role==='member' && CU.groupId && (!GD||!GD.name)){
+    try{
+      var {data:leaderProf}=await sb.from('profiles').select('app_data').eq('id',CU.groupId).single();
+      if(leaderProf&&leaderProf.app_data){
+        var leaderSaved=JSON.parse(leaderProf.app_data);
+        if(leaderSaved&&leaderSaved.GD&&leaderSaved.GD.name) GD=leaderSaved.GD;
+      }
+    }catch(e){ console.log('leader GD fetch error:',e); }
   }
 
   // ── Step 6: Persist immediately so codes are locked in ──────────────────
@@ -2807,19 +2837,15 @@ async function doCreateGroup(){
   var date=document.getElementById('cg-date').value;
   var time=document.getElementById('cg-time').value;
   var freq=document.getElementById('cg-freq').value;
+
+  // Use the leader's own user ID as the group ID — simple, reliable, no extra table needed.
+  // Members store this ID in their profiles.group_id to link to this group.
+  CU.groupId=CU.id;
+  // Also update profiles.group_id in Supabase so it survives without app_data column
   if(CU.id){
-    var ins=await sb.from('groups').insert({
-      name:name, start_date:start, meeting_day:day,
-      meeting_time:time, frequency:freq, created_by:CU.id,
-      ministry_id:CU.ministryId||null
-    }).select().single();
-    if(ins.error){toast('error: '+ins.error.message);return;}
-    var gid=ins.data.id;
-    await sb.from('profiles').update({group_id:gid}).eq('id',CU.id);
-    var mem=await sb.from('group_members').insert({group_id:gid,user_id:CU.id,role:'leader'});
-    if(mem.error){toast('group created but member link failed: '+mem.error.message);}
-    CU.groupId=gid;
+    sb.from('profiles').update({group_id:CU.id}).eq('id',CU.id).then(function(){}).catch(function(){});
   }
+
   GD={name:name,start:start,next:{day:day,date:date,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   closeModal();
   autoSave();
@@ -3045,43 +3071,46 @@ function saveRole(name, isPlaceholder){
 
 // Called automatically on first login when user signed up with a group invite code.
 // Finds the leader who owns that code and adds this member to their group.
+// Find the leader who owns a given group invite code.
+// Returns {id, full_name} or null.
+async function findLeaderByCode(code){
+  if(!code||!sb) return null;
+  code=code.trim().toUpperCase();
+  // Fetch all leader/ministry profiles
+  var {data:profiles,error}=await sb.from('profiles').select('id,full_name,app_data').in('role',['leader','ministry']);
+  if(error||!profiles) return null;
+  for(var i=0;i<profiles.length;i++){
+    var prof=profiles[i];
+    // First check: does their stored app_data have a matching groupCode?
+    try{
+      var d=prof.app_data?JSON.parse(prof.app_data):{};
+      if(d.groupCode===code) return {id:prof.id,name:prof.full_name,data:d};
+    }catch(e){}
+    // Second check: does the deterministic code (from user ID) match?
+    // This works even when app_data hasn't been saved to Supabase yet
+    try{
+      if(genCode('GRP',prof.id+'_grp')===code) return {id:prof.id,name:prof.full_name,data:{}};
+    }catch(e){}
+  }
+  return null;
+}
+
 async function autoJoinGroup(code){
   if(!code||!sb) return;
-  code=code.trim().toUpperCase();
   try{
-    var matchProfile=null;
-    var {data:profiles}=await sb.from('profiles').select('id,app_data,full_name').in('role',['leader','ministry']);
-    (profiles||[]).forEach(function(prof){
-      if(matchProfile) return;
-      // Check stored app_data
-      try{
-        var d=prof.app_data?JSON.parse(prof.app_data):{};
-        if(d.groupCode===code){ matchProfile={id:prof.id,data:d,name:prof.full_name}; return; }
-      }catch(e){}
-      // Also check deterministic code (works even when app_data not yet saved to Supabase)
-      try{
-        if(genCode('GRP',prof.id+'_grp')===code) matchProfile={id:prof.id,data:{},name:prof.full_name};
-      }catch(e){}
-    });
-    if(!matchProfile) return; // code didn't match anyone — user can join manually later
+    var leader=await findLeaderByCode(code);
+    if(!leader){ console.log('autoJoinGroup: no leader found for code',code); return; }
 
-    // Add this member to the leader's saved data
-    var leaderData=matchProfile.data;
-    if(!leaderData.groupRealMembers) leaderData.groupRealMembers=[];
-    var alreadyIn=leaderData.groupRealMembers.find(function(m){return m.id===CU.id;});
-    if(!alreadyIn){
-      leaderData.groupRealMembers.push({id:CU.id,n:CU.name,r:'group member',i:CU.init,real:true});
-      // Write to leader's localStorage and Supabase
-      try{ localStorage.setItem('gfy_'+matchProfile.id, JSON.stringify(leaderData)); }catch(e){}
-      sb.from('profiles').update({app_data:JSON.stringify(leaderData)}).eq('id',matchProfile.id)
-        .then(function(){}).catch(function(){});
-    }
+    // Write to the member's OWN profiles row — this is reliable because the column exists
+    // group_id = leader's user ID, so the leader can find this member by querying profiles
+    var r=await sb.from('profiles').update({group_id:leader.id}).eq('id',CU.id);
+    if(r.error){ console.log('autoJoinGroup profile update error:',r.error.message); }
 
-    // Connect this member to the group
-    CU.groupId='linked-to-'+matchProfile.id;
-    GD=leaderData.GD||{name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+    // Set state in memory
+    CU.groupId=leader.id;
+    GD=leader.data.GD||{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
 
-    // Clear the pending code from Supabase auth metadata so this doesn't re-run
+    // Clear the pending code from auth metadata so this doesn't re-run on next login
     sb.auth.updateUser({data:{group_code:''}}).then(function(){}).catch(function(){});
 
   }catch(e){ console.log('autoJoinGroup error:',e); }
@@ -3098,42 +3127,16 @@ async function doJoinGroup(){
   if(!code){toast('please enter an invite code 😊');return;}
   if(DEMO){toast('demo mode — in a real account this would connect you to the group');return;}
 
-  // Search all leader/ministry profiles for matching groupCode
-  // Check both Supabase app_data AND the deterministic code based on user ID
-  var matchProfile=null;
-  var {data:profiles}=await sb.from('profiles').select('id,app_data,full_name').in('role',['leader','ministry']);
-  (profiles||[]).forEach(function(prof){
-    if(matchProfile) return;
-    // Check stored app_data first
-    try{
-      var d=prof.app_data?JSON.parse(prof.app_data):{};
-      if(d.groupCode===code){ matchProfile={id:prof.id,data:d,name:prof.full_name}; return; }
-    }catch(e){}
-    // Also check the deterministic code (works even when app_data is missing/empty)
-    try{
-      var deterCode=genCode('GRP',prof.id+'_grp');
-      if(deterCode===code) matchProfile={id:prof.id,data:{},name:prof.full_name};
-    }catch(e){}
-  });
+  toast('looking up group...');
+  var leader=await findLeaderByCode(code);
+  if(!leader){toast('code not found — double-check with your group leader 😊');return;}
 
-  if(!matchProfile){
-    toast('code not found — double-check the invite code 😊');return;
-  }
+  // Write group_id to the member's own profiles row — reliable, column definitely exists
+  var r=await sb.from('profiles').update({group_id:leader.id}).eq('id',CU.id);
+  if(r.error){toast('error joining group: '+r.error.message);return;}
 
-  // Add this user to the leader's member list
-  var leaderData=matchProfile.data;
-  if(!leaderData.groupRealMembers) leaderData.groupRealMembers=[];
-  var alreadyIn=leaderData.groupRealMembers.find(function(m){return m.id===CU.id;});
-  if(!alreadyIn){
-    leaderData.groupRealMembers.push({id:CU.id,n:CU.name,r:'group member',i:CU.init,real:true});
-    // Update leader in both stores
-    sb.from('profiles').update({app_data:JSON.stringify(leaderData)}).eq('id',matchProfile.id).then(function(){});
-    try{ localStorage.setItem('gfy_'+matchProfile.id, JSON.stringify(leaderData)); }catch(e){}
-  }
-
-  // Connect this member to the group
-  CU.groupId='linked-to-'+matchProfile.id;
-  GD=leaderData.GD||{name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  CU.groupId=leader.id;
+  GD=leader.data.GD||{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   autoSave();
   closeModal();
   toast('you\'ve joined '+(GD.name||'the group')+'! 🎉');
