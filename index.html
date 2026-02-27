@@ -1331,10 +1331,8 @@ async function loadProfile(user){
   // For leaders/ministry: use the code stored in profiles.ministry_id if available
   // (written there on login). Fall back to deterministic hash of user.id.
   // This ensures the displayed code always matches what findLeaderByCode searches.
-  var isLeaderRole=(p.role==='leader'||p.role==='ministry');
-  var grpCode=(isLeaderRole&&p.ministry_id&&p.ministry_id.startsWith('GRP-'))
-    ? p.ministry_id
-    : genCode('GRP',user.id+'_grp');
+  // Codes are always deterministic — derived from user.id
+  var grpCode=genCode('GRP',user.id+'_grp');
   var minCode=genCode('MIN',user.id+'_min');
 
   // ── Step 4: Reconstitute CU ──────────────────────────────────────────────
@@ -1346,7 +1344,7 @@ async function loadProfile(user){
     type:p.role||'member',
     role:typeMap[p.role]||'group member',
     groupId:    saved.groupId || p.group_id || null,
-    ministryId:p.ministry_id||(p.role==='ministry'?user.id:null),
+    ministryId:(p.role==='ministry'?user.id:null),
     churchName:p.church_name||'',
     groupCode:  grpCode,
     minCode:    minCode,
@@ -1404,18 +1402,7 @@ async function loadProfile(user){
     }catch(e){ console.log('leader GD fetch error:',e); }
   }
 
-  // ── Step 6: For leaders/ministry, write groupCode to profiles.ministry_id ───
-  // This is the reliable Supabase lookup column for findLeaderByCode.
-  // ministry_id is unused for these roles otherwise.
-  if((p.role==='leader'||p.role==='ministry') && CU.groupCode){
-    var storedCode=p.ministry_id||'';
-    if(storedCode!==CU.groupCode){
-      sb.from('profiles').update({ministry_id:CU.groupCode}).eq('id',user.id)
-        .then(function(){}).catch(function(){});
-    }
-  }
-
-  // ── Step 7: Persist locally ───────────────────────────────────────────────
+  // ── Step 6: Persist ──────────────────────────────────────────────────────
   saveLocal();
   saveRemote();
 
@@ -3100,14 +3087,14 @@ async function findLeaderByCode(code){
     sessionInfo=sess.data&&sess.data.session?'logged in as '+sess.data.session.user.email:'NO SESSION';
   }catch(e){ sessionInfo='session error: '+e.message; }
 
-  // Fetch ALL profiles
-  var {data:allProfiles, error:allErr}=await sb.from('profiles').select('id,full_name,role,ministry_id,app_data');
+  // Fetch all leader/ministry profiles — only columns that actually exist
+  var {data:allProfiles, error:allErr}=await sb.from('profiles').select('id,full_name,role,app_data');
 
-  // DEBUG modal
+  // DEBUG modal — remove after invite code is confirmed working
   var lines=[
     '<b>Auth:</b> '+sessionInfo+'<br>',
     '<b>Searching for:</b> '+code+'<br>',
-    '<b>Error:</b> '+(allErr?allErr.message+' (code:'+allErr.code+')'  :'none')+'<br>',
+    '<b>Error:</b> '+(allErr?allErr.message:'none')+'<br>',
     '<b>Rows returned:</b> '+((allProfiles||[]).length)+'<br><br>'
   ];
   (allProfiles||[]).forEach(function(pr){
@@ -3118,10 +3105,9 @@ async function findLeaderByCode(code){
     lines.push(
       '<div style="border:1px solid #ccc;padding:6px;margin-bottom:6px;font-size:11px;text-align:left">'
       +'<b>'+pr.full_name+'</b> ('+pr.role+')<br>'
-      +'ministry_id: '+(pr.ministry_id||'null')+'<br>'
       +'app_data.groupCode: '+(appData.groupCode||'null')+'<br>'
       +'deterCode: '+deterCode+'<br>'
-      +'match ministry_id: '+(pr.ministry_id===code)+' | match appData: '+(appData.groupCode===code)+' | match deter: '+(deterCode===code)
+      +'match appData: '+(appData.groupCode===code)+' | match deter: '+(deterCode===code)
       +'</div>'
     );
   });
@@ -3129,32 +3115,23 @@ async function findLeaderByCode(code){
 
   if(allErr){ return null; }
 
-  // Primary: match ministry_id
-  for(var i=0;i<(allProfiles||[]).length;i++){
-    var pr=allProfiles[i];
-    if((pr.role==='leader'||pr.role==='ministry') && pr.ministry_id===code){
-      var d={};
-      try{ if(pr.app_data) d=JSON.parse(pr.app_data); }catch(e){}
-      return {id:pr.id, name:pr.full_name, data:d};
-    }
-  }
-  // Fallback: match app_data.groupCode
+  // Match app_data.groupCode
   for(var i=0;i<(allProfiles||[]).length;i++){
     var pr=allProfiles[i];
     if(pr.role==='leader'||pr.role==='ministry'){
       try{
-        var d2=pr.app_data?JSON.parse(pr.app_data):{};
-        if(d2.groupCode===code) return {id:pr.id, name:pr.full_name, data:d2};
+        var d=pr.app_data?JSON.parse(pr.app_data):{};
+        if(d.groupCode===code) return {id:pr.id, name:pr.full_name, data:d};
       }catch(e){}
     }
   }
-  // Fallback: deterministic code
+  // Fallback: deterministic code (user hasn't logged in since deterministic fix)
   for(var i=0;i<(allProfiles||[]).length;i++){
     var pr=allProfiles[i];
     if((pr.role==='leader'||pr.role==='ministry') && genCode('GRP',pr.id+'_grp')===code){
-      var d3={};
-      try{ if(pr.app_data) d3=JSON.parse(pr.app_data); }catch(e){}
-      return {id:pr.id, name:pr.full_name, data:d3};
+      var d2={};
+      try{ if(pr.app_data) d2=JSON.parse(pr.app_data); }catch(e){}
+      return {id:pr.id, name:pr.full_name, data:d2};
     }
   }
   return null;
