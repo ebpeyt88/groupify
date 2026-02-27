@@ -1320,12 +1320,7 @@ async function loadProfile(user){
     if(raw){ var ls=JSON.parse(raw); if(ls&&ls.groupCode) saved=ls; }
   }catch(e){}
 
-  // If localStorage had nothing, try Supabase app_data column
-  if(!saved.groupCode){
-    try{
-      if(p.app_data){ var db=JSON.parse(p.app_data); if(db&&db.groupCode) saved=db; }
-    }catch(e){}
-  }
+  // Supabase app_data column does not exist in this schema — localStorage is the only store
 
   // ── Step 3: Invite codes ─────────────────────────────────────────────────────
   // For leaders/ministry: use the code stored in profiles.ministry_id if available
@@ -1370,37 +1365,8 @@ async function loadProfile(user){
     await autoJoinGroup(pendingCode);
   }
 
-  // ── Step 5c: Leader/ministry — pull real members from Supabase ───────────
-  if((p.role==='leader'||p.role==='ministry') && CU.groupId){
-    try{
-      var {data:memberRows}=await sb.from('profiles')
-        .select('id,full_name,role')
-        .eq('group_id', user.id)
-        .neq('id', user.id);
-      if(memberRows&&memberRows.length>0){
-        var existing=CU.groupRealMembers||[];
-        memberRows.forEach(function(m){
-          var already=existing.find(function(e){return e.id===m.id;});
-          if(!already){
-            existing.push({id:m.id,n:m.full_name,r:'group member',i:initials(m.full_name),real:true});
-          }
-        });
-        CU.groupRealMembers=existing;
-      }
-    }catch(e){ console.log('member fetch error:',e); }
-  }
-
-  // ── Step 5d: Member — fetch group data from leader if GD is empty ─────────
-  // Members have group_id = leader's user ID; pull the leader's GD so they see the group
-  if(p.role==='member' && CU.groupId && (!GD||!GD.name)){
-    try{
-      var {data:leaderProf}=await sb.from('profiles').select('app_data').eq('id',CU.groupId).single();
-      if(leaderProf&&leaderProf.app_data){
-        var leaderSaved=JSON.parse(leaderProf.app_data);
-        if(leaderSaved&&leaderSaved.GD&&leaderSaved.GD.name) GD=leaderSaved.GD;
-      }
-    }catch(e){ console.log('leader GD fetch error:',e); }
-  }
+  // Note: profiles.group_id and profiles.app_data columns don't exist in this schema.
+  // Member connections are stored in localStorage only.
 
   // ── Step 6: Persist ──────────────────────────────────────────────────────
   saveLocal();
@@ -1440,14 +1406,8 @@ function saveLocal(){
   catch(e){ console.warn('localStorage save failed:',e); }
 }
 
-// Async save to Supabase — fire-and-forget background sync
-function saveRemote(){
-  if(!CU||!CU.id||DEMO||!sb) return;
-  var payload=buildPayload();
-  sb.from('profiles').update({app_data:JSON.stringify(payload)}).eq('id',CU.id)
-    .then(function(r){ if(r.error) console.log('remote save skipped:',r.error.message); })
-    .catch(function(e){ console.log('remote save error:',e); });
-}
+// saveRemote: app_data column doesn't exist in profiles — localStorage is the only store
+function saveRemote(){ /* no-op: app_data column not in schema */ }
 
 // saveAppData: write both stores. Called explicitly after big changes.
 function saveAppData(){
@@ -2844,10 +2804,7 @@ async function doCreateGroup(){
   // Use the leader's own user ID as the group ID — simple, reliable, no extra table needed.
   // Members store this ID in their profiles.group_id to link to this group.
   CU.groupId=CU.id;
-  // Also update profiles.group_id in Supabase so it survives without app_data column
-  if(CU.id){
-    sb.from('profiles').update({group_id:CU.id}).eq('id',CU.id).then(function(){}).catch(function(){});
-  }
+  // group_id column doesn't exist in profiles — groupId stored in localStorage only
 
   GD={name:name,start:start,next:{day:day,date:date,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   closeModal();
@@ -3087,10 +3044,10 @@ async function findLeaderByCode(code){
     sessionInfo=sess.data&&sess.data.session?'logged in as '+sess.data.session.user.email:'NO SESSION';
   }catch(e){ sessionInfo='session error: '+e.message; }
 
-  // Fetch all leader/ministry profiles — only columns that actually exist
-  var {data:allProfiles, error:allErr}=await sb.from('profiles').select('id,full_name,role,app_data');
+  // Query only columns confirmed to exist in profiles table
+  var {data:allProfiles, error:allErr}=await sb.from('profiles').select('id,full_name,role');
 
-  // DEBUG modal — remove after invite code is confirmed working
+  // DEBUG modal
   var lines=[
     '<b>Auth:</b> '+sessionInfo+'<br>',
     '<b>Searching for:</b> '+code+'<br>',
@@ -3098,16 +3055,13 @@ async function findLeaderByCode(code){
     '<b>Rows returned:</b> '+((allProfiles||[]).length)+'<br><br>'
   ];
   (allProfiles||[]).forEach(function(pr){
-    var appData={};
-    try{ if(pr.app_data) appData=JSON.parse(pr.app_data); }catch(e){}
     var deterCode='';
     try{ deterCode=genCode('GRP',pr.id+'_grp'); }catch(e){}
     lines.push(
       '<div style="border:1px solid #ccc;padding:6px;margin-bottom:6px;font-size:11px;text-align:left">'
       +'<b>'+pr.full_name+'</b> ('+pr.role+')<br>'
-      +'app_data.groupCode: '+(appData.groupCode||'null')+'<br>'
       +'deterCode: '+deterCode+'<br>'
-      +'match appData: '+(appData.groupCode===code)+' | match deter: '+(deterCode===code)
+      +'match: '+(deterCode===code)
       +'</div>'
     );
   });
@@ -3115,23 +3069,11 @@ async function findLeaderByCode(code){
 
   if(allErr){ return null; }
 
-  // Match app_data.groupCode
-  for(var i=0;i<(allProfiles||[]).length;i++){
-    var pr=allProfiles[i];
-    if(pr.role==='leader'||pr.role==='ministry'){
-      try{
-        var d=pr.app_data?JSON.parse(pr.app_data):{};
-        if(d.groupCode===code) return {id:pr.id, name:pr.full_name, data:d};
-      }catch(e){}
-    }
-  }
-  // Fallback: deterministic code (user hasn't logged in since deterministic fix)
+  // Match via deterministic code — derived purely from user ID, no DB columns needed
   for(var i=0;i<(allProfiles||[]).length;i++){
     var pr=allProfiles[i];
     if((pr.role==='leader'||pr.role==='ministry') && genCode('GRP',pr.id+'_grp')===code){
-      var d2={};
-      try{ if(pr.app_data) d2=JSON.parse(pr.app_data); }catch(e){}
-      return {id:pr.id, name:pr.full_name, data:d2};
+      return {id:pr.id, name:pr.full_name, data:{}};
     }
   }
   return null;
@@ -3143,10 +3085,7 @@ async function autoJoinGroup(code){
     var leader=await findLeaderByCode(code);
     if(!leader){ console.log('autoJoinGroup: no leader found for code',code); return; }
 
-    // Write to the member's OWN profiles row — this is reliable because the column exists
-    // group_id = leader's user ID, so the leader can find this member by querying profiles
-    var r=await sb.from('profiles').update({group_id:leader.id}).eq('id',CU.id);
-    if(r.error){ console.log('autoJoinGroup profile update error:',r.error.message); }
+    // group_id column doesn't exist — connection stored in localStorage only
 
     // Set state in memory
     CU.groupId=leader.id;
@@ -3173,9 +3112,7 @@ async function doJoinGroup(){
   var leader=await findLeaderByCode(code);
   if(!leader){toast('code not found — double-check with your group leader 😊');return;}
 
-  // Write group_id to the member's own profiles row — reliable, column definitely exists
-  var r=await sb.from('profiles').update({group_id:leader.id}).eq('id',CU.id);
-  if(r.error){toast('error joining group: '+r.error.message);return;}
+  // Store connection in localStorage (group_id column doesn't exist in profiles)
 
   CU.groupId=leader.id;
   GD=leader.data.GD||{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
