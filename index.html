@@ -482,8 +482,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
     </div>
     <nav class="sb-nav" id="sb-nav"></nav>
     <div class="sb-foot">
-      <button class="btn btn-g btn-sm" onclick="modalReportBug()" style="width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.4);margin-bottom:8px;font-size:12px">🐛 report a bug</button>
-      <button class="btn btn-g btn-sm" id="sb-view-bugs" onclick="viewBugReports()" style="display:none;width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.35);margin-bottom:8px;font-size:12px">📋 view bug reports</button>
+
       <button class="btn btn-g btn-sm" onclick="doLogout()" style="width:100%;border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5)">sign out</button>
     </div>
   </div>
@@ -555,6 +554,8 @@ var caRole = null; // selected role during signup
      building a shared history/timeline just for the group
    - "Contact ministry leader" button: group leaders/members can
      email or message their ministry leader directly
+   - "Report a bug" feature: a way for users to submit bug reports
+     directly to the site owner/admin (e.g. via email or a form service)
    ============================================================ */
 
 /* ============================================================
@@ -1281,7 +1282,9 @@ async function doSignIn(){
 
 async function loadProfile(user){
   DEMO=false;
-  PRAYERS=[]; // real accounts start with empty prayer list
+  PRAYERS=[];
+
+  // ── Step 1: Load the auth profile from Supabase ──────────────────────────
   var {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(!p){
     var meta=user.user_metadata||{};
@@ -1289,28 +1292,33 @@ async function loadProfile(user){
     var r2=await sb.from('profiles').select('*').eq('id',user.id).single();
     p=r2.data;
   }
-  if(!p){toast('error loading your profile - please try again 😕');return;}
-  var typeMap={ministry:'ministry leader',leader:'group leader',member:'group member'};
+  if(!p){toast('error loading your profile — please try again 😕');return;}
 
-  // Parse saved app data — try Supabase first, then localStorage fallback
+  // ── Step 2: Load saved app data ──────────────────────────────────────────
+  // Priority: localStorage first (always available), then Supabase app_data
+  var lsK='gfy_'+user.id;
   var saved={};
-  var lsKey='groupify_data_'+user.id;
-  try { if(p.app_data) saved=JSON.parse(p.app_data); } catch(e){}
+
+  // Try localStorage first
+  try{
+    var raw=localStorage.getItem(lsK);
+    if(raw){ var ls=JSON.parse(raw); if(ls&&ls.groupCode) saved=ls; }
+  }catch(e){}
+
+  // If localStorage had nothing, try Supabase app_data column
   if(!saved.groupCode){
-    // Supabase app_data empty or column missing — try localStorage
     try{
-      var ls=localStorage.getItem(lsKey);
-      if(ls){var lsData=JSON.parse(ls); if(lsData.groupCode) saved=lsData;}
+      if(p.app_data){ var db=JSON.parse(p.app_data); if(db&&db.groupCode) saved=db; }
     }catch(e){}
   }
 
-  // Generate DETERMINISTIC codes from user.id — they'll be identical every login
-  // This ensures codes never change even if app_data column doesn't exist yet
-  var stableGrpSeed=user.id+'_grp';
-  var stableMinSeed=user.id+'_min';
-  var groupCode=saved.groupCode||genCode('GRP',stableGrpSeed);
-  var minCode=saved.minCode||genCode('MIN',stableMinSeed);
+  // ── Step 3: Stable invite codes (deterministic hash of user.id) ──────────
+  // Even if saved={}, these codes will always be the same for this user
+  var grpCode=saved.groupCode||genCode('GRP',user.id+'_grp');
+  var minCode=saved.minCode||genCode('MIN',user.id+'_min');
 
+  // ── Step 4: Reconstitute CU ──────────────────────────────────────────────
+  var typeMap={ministry:'ministry leader',leader:'group leader',member:'group member'};
   CU={
     id:user.id, email:user.email,
     name:p.full_name||user.email,
@@ -1320,60 +1328,81 @@ async function loadProfile(user){
     groupId:p.group_id||null,
     ministryId:p.ministry_id||(p.role==='ministry'?user.id:null),
     churchName:p.church_name||'',
-    groupCode: groupCode,
-    minCode: minCode,
-    groupResources: saved.groupResources||[],
+    groupCode:  grpCode,
+    minCode:    minCode,
+    groupResources:     saved.groupResources||[],
     placeholderMembers: saved.placeholderMembers||[],
-    groupRealMembers: saved.groupRealMembers||[]
+    groupRealMembers:   saved.groupRealMembers||[]
   };
-  // Restore REAL_MINISTRY_RESOURCES
+
+  // ── Step 5: Restore global state ─────────────────────────────────────────
   if(saved.ministryResources) REAL_MINISTRY_RESOURCES=saved.ministryResources;
 
-  // Restore group data
-  if(saved.GD && saved.GD.name){
-    GD=saved.GD;
-  } else {
-    GD={name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
-  }
+  GD=(saved.GD&&saved.GD.name)
+    ? saved.GD
+    : {name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
 
-  // Restore prayers
-  if(saved.prayers) PRAYERS=saved.prayers;
-
-  // Restore scheduling slots
-  if(saved.schedSlots) SCHED_SLOTS=saved.schedSlots;
+  if(saved.prayers)       PRAYERS=saved.prayers;
+  if(saved.schedSlots)    SCHED_SLOTS=saved.schedSlots;
   if(saved.announcements) MINISTRY_ANNOUNCEMENTS=saved.announcements;
 
-  // Save the stable codes back immediately so they persist
-  await saveAppData();
+  // ── Step 6: Persist immediately so codes are locked in ──────────────────
+  saveLocal(); // sync — happens before enterApp
+  saveRemote(); // async background — best effort Supabase sync
+
   enterApp();
 }
 
-// Save all transient app state to Supabase profiles.app_data
-async function saveAppData(){
-  if(!CU||!CU.id||DEMO) return;
-  var payload={
-    groupCode:CU.groupCode,
-    minCode:CU.minCode,
-    groupResources:CU.groupResources||[],
+// ─── PERSISTENCE ─────────────────────────────────────────────────────────────
+// Primary store: localStorage (synchronous, always works, survives logout)
+// Secondary store: Supabase profiles.app_data (async, requires column to exist)
+// On load: try Supabase first (shared across devices), fall back to localStorage
+
+function buildPayload(){
+  return {
+    v:2, // version tag so we can migrate later
+    groupCode: CU.groupCode,
+    minCode:   CU.minCode,
+    groupResources:    CU.groupResources||[],
     placeholderMembers:CU.placeholderMembers||[],
-    groupRealMembers:CU.groupRealMembers||[],
-    ministryResources:REAL_MINISTRY_RESOURCES,
-    GD:GD,
-    prayers:PRAYERS,
-    schedSlots:SCHED_SLOTS,
-    announcements:MINISTRY_ANNOUNCEMENTS
+    groupRealMembers:  CU.groupRealMembers||[],
+    ministryResources: REAL_MINISTRY_RESOURCES,
+    GD:          GD,
+    prayers:     PRAYERS,
+    schedSlots:  typeof SCHED_SLOTS!=='undefined'?SCHED_SLOTS:[],
+    announcements:MINISTRY_ANNOUNCEMENTS||[]
   };
-  var key='groupify_data_'+CU.id;
-  // Always save to localStorage first — instant and reliable
-  try{ localStorage.setItem(key, JSON.stringify(payload)); }catch(e){}
-  // Also try Supabase app_data column (may not exist — that's OK)
-  try{
-    await sb.from('profiles').update({app_data:JSON.stringify(payload)}).eq('id',CU.id);
-  }catch(e){ /* app_data column may not exist yet — localStorage handles persistence */ }
 }
 
-// Auto-save helper — call after any important state change
-function autoSave(){ if(!DEMO&&CU&&CU.id) saveAppData(); }
+function lsKey(){ return 'gfy_'+CU.id; }
+
+// SYNC save to localStorage — call this everywhere, instant, never fails
+function saveLocal(){
+  if(!CU||!CU.id||DEMO) return;
+  try{ localStorage.setItem(lsKey(), JSON.stringify(buildPayload())); }
+  catch(e){ console.warn('localStorage save failed:',e); }
+}
+
+// Async save to Supabase — fire-and-forget background sync
+function saveRemote(){
+  if(!CU||!CU.id||DEMO||!sb) return;
+  var payload=buildPayload();
+  sb.from('profiles').update({app_data:JSON.stringify(payload)}).eq('id',CU.id)
+    .then(function(r){ if(r.error) console.log('remote save skipped:',r.error.message); })
+    .catch(function(e){ console.log('remote save error:',e); });
+}
+
+// saveAppData: write both stores. Called explicitly after big changes.
+function saveAppData(){
+  saveLocal();
+  saveRemote();
+  return Promise.resolve(); // keep async callers happy
+}
+
+// autoSave: lightweight hook for minor changes — localStorage only, instant
+function autoSave(){
+  if(!DEMO&&CU&&CU.id){ saveLocal(); saveRemote(); }
+}
 
 async function doLogout(){
   await sb.auth.signOut();
@@ -1418,8 +1447,6 @@ function enterApp(){
   MY_SEEN_ANNOUNCEMENTS=new Set();
   buildNav();
   // Show view-bug-reports button for ministry leaders
-  var bugBtn=document.getElementById('sb-view-bugs');
-  if(bugBtn) bugBtn.style.display=CU.type==='ministry'?'block':'none';
   goPage('home');
   setTimeout(showAnnounceBanner, 400);
 }
@@ -1758,73 +1785,6 @@ function showAnnounceBanner(){
   document.getElementById('s-app').style.paddingTop='52px';
 }
 
-/* ============================================================
-   REPORT A BUG
-   ============================================================ */
-var BUG_REPORTS = [];
-
-function modalReportBug(){
-  openModal(mClose()+'<h2>🐛 report a bug</h2>'
-    +'<div class="modal-sub">let us know what\'s not working. we\'ll look into it as soon as possible.</div>'
-    +'<div class="fg"><label>what were you trying to do?</label><input type="text" id="bug-action" placeholder="e.g. adding a prayer request"></div>'
-    +'<div class="fg"><label>what went wrong?</label><textarea rows="4" id="bug-desc" placeholder="describe what happened — the more detail, the better..."></textarea></div>'
-    +'<div class="fg"><label>how bad is it?</label>'
-    +'<select id="bug-sev"><option value="low">minor annoyance — I can work around it</option><option value="med">frustrating — it slows me down</option><option value="high">critical — I can\'t use a key feature</option></select></div>'
-    +'<button class="btn btn-p btn-full" onclick="submitBug()">submit report 🐛</button>');
-}
-async function submitBug(){
-  var action=document.getElementById('bug-action').value.trim();
-  var desc=document.getElementById('bug-desc').value.trim();
-  var sev=document.getElementById('bug-sev').value;
-  if(!desc){toast('please describe the issue 😊');return;}
-  var report={id:Date.now(),user:CU?CU.name:'unknown',email:CU?CU.email:'',role:CU?CU.role:'',action:action,desc:desc,severity:sev,dt:new Date().toISOString()};
-  BUG_REPORTS.push(report);
-  // Always save to localStorage so nothing is lost
-  try{
-    var existing=JSON.parse(localStorage.getItem('groupify_bugs')||'[]');
-    existing.push(report);
-    localStorage.setItem('groupify_bugs',JSON.stringify(existing));
-  }catch(e){}
-  // Try Supabase if available
-  if(!DEMO&&sb&&CU&&CU.id){
-    try{
-      await sb.from('bug_reports').insert({
-        user_id:CU.id,user_name:CU.name,user_email:CU.email,
-        action:action,description:desc,severity:sev,dt:report.dt
-      });
-    }catch(e){/* table may not exist yet — report is still in localStorage */}
-  }
-  closeModal();
-  toast('bug report saved — thank you! 🙏');
-}
-
-function viewBugReports(){
-  var stored=[];
-  try{stored=JSON.parse(localStorage.getItem('groupify_bugs')||'[]');}catch(e){}
-  var all=stored;
-  if(all.length===0){openModal(mClose()+'<h2>🐛 bug reports</h2><div class="banner banner-green">no bug reports yet.</div>');return;}
-  var html=mClose()+'<h2>🐛 bug reports ('+all.length+')</h2>';
-  all.slice().reverse().forEach(function(r){
-    var sevColor=r.severity==='high'?'var(--accent)':r.severity==='med'?'#F4A261':'var(--brand)';
-    html+='<div style="border:1.5px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:10px">'
-      +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
-      +'<span style="font-size:12px;font-weight:600;color:'+sevColor+'">'+r.severity.toUpperCase()+'</span>'
-      +'<span style="font-size:11px;color:var(--muted)">'+new Date(r.dt).toLocaleString()+'</span>'
-      +'</div>'
-      +'<div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:3px">'+r.action+'</div>'
-      +'<div style="font-size:13px;color:var(--mid)">'+r.desc+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-top:4px">— '+r.user+' ('+r.role+')'+'</div>'
-      +'</div>';
-  });
-  html+='<button class="btn btn-g btn-sm" onclick="clearBugReports()">clear all reports</button>';
-  openModal(html);
-}
-function clearBugReports(){
-  try{localStorage.removeItem('groupify_bugs');}catch(e){}
-  BUG_REPORTS=[];
-  closeModal();
-  toast('bug reports cleared');
-}
 
 /* ============================================================
    PAGE: MINISTRY - ALL GROUPS
@@ -2834,7 +2794,7 @@ async function doCreateGroup(){
   }
   GD={name:name,start:start,next:{day:day,date:date,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   closeModal();
-  await autoSave();
+  autoSave();
   goPage(CU.type==='ministry'?'grp-home':'home');
   toast('group created! 🎉');
 }
@@ -3006,33 +2966,46 @@ async function doJoinGroup(){
   var code=document.getElementById('jg-code').value.trim().toUpperCase();
   if(!code){toast('please enter an invite code 😊');return;}
   if(DEMO){toast('demo mode — in a real account this would connect you to the group');return;}
-  // Look up the group leader who owns this code
-  // We search app_data for matching groupCode
-  var {data:profiles}=await sb.from('profiles').select('id,app_data,full_name').eq('role','leader');
+
+  // Search all leader/ministry profiles for matching groupCode
+  // Check both Supabase app_data AND the deterministic code based on user ID
   var matchProfile=null;
+  var {data:profiles}=await sb.from('profiles').select('id,app_data,full_name').in('role',['leader','ministry']);
   (profiles||[]).forEach(function(prof){
+    if(matchProfile) return;
+    // Check stored app_data first
     try{
       var d=prof.app_data?JSON.parse(prof.app_data):{};
-      if(d.groupCode===code) matchProfile={id:prof.id,data:d,name:prof.full_name};
+      if(d.groupCode===code){ matchProfile={id:prof.id,data:d,name:prof.full_name}; return; }
+    }catch(e){}
+    // Also check the deterministic code (works even when app_data is missing/empty)
+    try{
+      var deterCode=genCode('GRP',prof.id+'_grp');
+      if(deterCode===code) matchProfile={id:prof.id,data:{},name:prof.full_name};
     }catch(e){}
   });
+
   if(!matchProfile){
-    toast('code not found — check with your group leader 😊');return;
+    toast('code not found — double-check the invite code 😊');return;
   }
-  // Add this user to the leader's groupRealMembers list
+
+  // Add this user to the leader's member list
   var leaderData=matchProfile.data;
   if(!leaderData.groupRealMembers) leaderData.groupRealMembers=[];
   var alreadyIn=leaderData.groupRealMembers.find(function(m){return m.id===CU.id;});
   if(!alreadyIn){
     leaderData.groupRealMembers.push({id:CU.id,n:CU.name,r:'group member',i:CU.init,real:true});
-    await sb.from('profiles').update({app_data:JSON.stringify(leaderData)}).eq('id',matchProfile.id);
+    // Update leader in both stores
+    sb.from('profiles').update({app_data:JSON.stringify(leaderData)}).eq('id',matchProfile.id).then(function(){});
+    try{ localStorage.setItem('gfy_'+matchProfile.id, JSON.stringify(leaderData)); }catch(e){}
   }
-  // Set this user's group link
+
+  // Connect this member to the group
   CU.groupId='linked-to-'+matchProfile.id;
   GD=leaderData.GD||{name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
-  await saveAppData();
+  autoSave();
   closeModal();
-  toast('you\'ve joined '+GD.name+'! 🎉');
+  toast('you\'ve joined '+(GD.name||'the group')+'! 🎉');
   goPage('home');
 }
 
