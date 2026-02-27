@@ -956,6 +956,21 @@ function getStudy(book){
   return generated;
 }
 
+// Unified study lookup: checks ministry resources first, then BIBLE_STUDIES + auto-generate.
+// Use this everywhere we need sessions for a given study title.
+function getStudyForTitle(title){
+  if(!title) return null;
+  // Check ministry resources (they carry their own sessions array)
+  var minRes=getMinistryResources();
+  for(var i=0;i<minRes.length;i++){
+    if(minRes[i].title===title&&minRes[i].sessions&&minRes[i].sessions.length>0){
+      return {sessions:minRes[i].sessions};
+    }
+  }
+  // Fall back to bible study (pre-built or auto-generated)
+  return getStudy(title);
+}
+
 // Current study guide view state
 var studyGuideBook=null;
 var studyGuideFrom=null; // 'group' or 'ministry'
@@ -1628,6 +1643,7 @@ function pgGrpHome(){
   var g=GD;
   var memberPrayers=DEMO?PRAYERS.slice(0,2):[];
   var stats=DEMO?g.stats:{meetings:0,answered:0,books:0};
+  if(isLeader()) topAction('<button class="btn btn-g btn-sm" onclick="modalRenameGroup()">✏️ rename group</button>');
   pc('<div class="mhero">'
     +'<div class="mhero-label">📅 '+g.name+'</div>'
     +'<div class="mhero-title">'+(g.next.date?fmtDate(g.next.date):g.next.day?g.next.day+' nights':'no meeting scheduled yet')+'</div>'
@@ -1636,7 +1652,10 @@ function pgGrpHome(){
     +(g.next.loc?'<span class="mhero-detail">📍 '+g.next.loc+'</span>':'')
     +(g.next.freq?'<span class="mhero-detail">🔁 '+g.next.freq+'</span>':'')
     +'</div>'
-    +(isLeader()?'<div class="mhero-actions"><button class="btn btn-a" style="margin-top:16px" onclick="modalEditMeeting()">edit meeting details</button></div>':'')
+    +(isLeader()?'<div class="mhero-actions" style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-a" onclick="modalEditMeeting()">edit meeting details</button>'
+      +(GD&&GD.study&&getStudyForTitle(GD.study)?'<button class="btn btn-g" onclick="modalMarkMeetingDone()">✓ meeting done</button>':'')
+      +'</div>':'')
     +'</div>'
     +'<div class="g2">'
     +'<div>'
@@ -2663,12 +2682,12 @@ function filterBible(f,el){
 function setStudy(title){
   if(!GD) GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   GD.study=title;
-  // Auto-populate homework from first session if a study guide exists
-  var study=BIBLE_STUDIES[title]||null;
+  GD._studySession=0; // always reset to session 1 when switching studies
+  // Auto-populate homework from first session (works for both bible studies and ministry resources)
+  var study=getStudyForTitle(title);
   if(study&&study.sessions&&study.sessions.length>0){
     var s0=study.sessions[0];
-    GD.hw='📖 '+s0.reading+(s0.assignment?' — '+s0.assignment:'');
-    GD._studySession=0; // track which session we're on
+    GD.hw='📖 '+s0.reading+(s0.assignment?' — '+s0.assignment:(s0.assignment||''));
   }
   autoSave();
   toast('"'+title+'" set as current study 📖');
@@ -2808,11 +2827,66 @@ async function doCreateGroup(){
   toast('group created! 🎉');
 }
 
+function modalRenameGroup(){
+  if(!GD) return;
+  openModal(mClose()+'<h2>✏️ rename group</h2>'
+    +'<div class="fg"><label>group name</label><input type="text" id="rg-name" value="'+GD.name+'" placeholder="e.g. Thursday Night Crew"></div>'
+    +'<button class="btn btn-p btn-full" onclick="saveGroupName()">save name</button>');
+}
+function saveGroupName(){
+  var name=document.getElementById('rg-name').value.trim();
+  if(!name){toast('please enter a group name 😊');return;}
+  GD.name=name;
+  autoSave();
+  closeModal();
+  toast('group renamed to "'+name+'" ✅');
+  pgGrpHome();
+}
+
+function modalMarkMeetingDone(){
+  var study=GD&&GD.study?getStudyForTitle(GD.study):null;
+  var si=GD&&GD._studySession!=null?GD._studySession:0;
+  var hasNext=study&&study.sessions&&si<study.sessions.length-1;
+  var nextSession=hasNext?study.sessions[si+1]:null;
+  openModal(mClose()+'<h2>✅ meeting complete!</h2>'
+    +'<div class="modal-sub">great job meeting together. '+(hasNext?'here\'s what\'s up next in your study:':'you\'ve completed all sessions in this study!')+'</div>'
+    +(nextSession
+      ?'<div style="background:var(--brand-p);border:1px solid var(--brand-l);border-radius:var(--rsm);padding:14px;margin-bottom:16px">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--brand);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">next up — session '+(si+2)+'</div>'
+        +'<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:4px">'+nextSession.title+'</div>'
+        +'<div style="font-size:13px;color:var(--mid)">📖 '+nextSession.reading+'</div>'
+        +'</div>'
+      :'<div class="banner banner-green" style="margin-bottom:16px">🎉 your group has completed the entire study! time to pick a new one.</div>')
+    +(hasNext
+      ?'<button class="btn btn-p btn-full" onclick="doMarkMeetingDone()">advance to session '+(si+2)+' →</button>'
+      :'<button class="btn btn-p btn-full" onclick="goPage(\'resources\');closeModal()">pick a new study →</button>')
+    +'<button class="btn btn-g btn-full" style="margin-top:8px" onclick="closeModal()">close</button>');
+}
+function doMarkMeetingDone(){
+  if(!GD) return;
+  var study=GD.study?getStudyForTitle(GD.study):null;
+  if(!study||!study.sessions) return;
+  var si=GD._studySession!=null?GD._studySession:0;
+  var nextSi=Math.min(si+1,study.sessions.length-1);
+  // Update stats
+  if(!GD.stats) GD.stats={meetings:0,answered:0,books:0};
+  GD.stats.meetings=(GD.stats.meetings||0)+1;
+  // Advance session and pre-fill homework for next session
+  GD._studySession=nextSi;
+  var nextS=study.sessions[nextSi];
+  GD.hw='📖 '+nextS.reading+(nextS.assignment?' — '+nextS.assignment:'');
+  autoSave();
+  closeModal();
+  toast('session '+(nextSi+1)+' unlocked — homework updated! 📖');
+  var active=document.querySelector('.ni.active');
+  if(active) goPage(active.id.replace('ni-',''));
+}
+
 function modalEditMeeting(){
   var n=GD&&GD.next?GD.next:{};
   var todayVal=n.date||new Date().toISOString().split('T')[0];
   var studyName=GD&&GD.study?GD.study:'';
-  var study=studyName?BIBLE_STUDIES[studyName]:null;
+  var study=studyName?getStudyForTitle(studyName):null;
   var sessionNav='';
   if(study&&study.sessions&&study.sessions.length>0){
     var si=GD._studySession||0;
@@ -2852,7 +2926,7 @@ function modalEditMeeting(){
 }
 function changeStudySession(dir){
   if(!GD) return;
-  var study=GD.study?BIBLE_STUDIES[GD.study]:null;
+  var study=GD.study?getStudyForTitle(GD.study):null;
   if(!study) return;
   var si=Math.max(0,Math.min(study.sessions.length-1,(GD._studySession||0)+dir));
   GD._studySession=si;
@@ -2860,7 +2934,7 @@ function changeStudySession(dir){
 }
 function useThisSession(si){
   if(!GD) return;
-  var study=GD.study?BIBLE_STUDIES[GD.study]:null;
+  var study=GD.study?getStudyForTitle(GD.study):null;
   if(!study||!study.sessions[si]) return;
   var s=study.sessions[si];
   var hwEl=document.getElementById('em-hw');
@@ -2868,6 +2942,8 @@ function useThisSession(si){
 }
 function saveMeeting(){
   if(!GD) GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  var newStudy=document.getElementById('em-study').value;
+  var studyChanged=newStudy!==GD.study;
   GD.next={
     day:document.getElementById('em-day').value,
     date:document.getElementById('em-date').value,
@@ -2875,8 +2951,10 @@ function saveMeeting(){
     loc:document.getElementById('em-loc').value,
     freq:document.getElementById('em-freq').value
   };
-  GD.study=document.getElementById('em-study').value;
+  GD.study=newStudy;
   GD.hw=document.getElementById('em-hw').value;
+  // If study changed, reset to session 0; otherwise session was already set by user interaction
+  if(studyChanged){ GD._studySession=0; }
   closeModal();
   toast('meeting details saved 📅');
   autoSave();
