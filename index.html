@@ -1360,9 +1360,10 @@ async function loadProfile(user){
     ? saved.GD
     : {name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
 
-  if(saved.prayers)       PRAYERS=saved.prayers;
-  if(saved.schedSlots)    SCHED_SLOTS=saved.schedSlots;
-  if(saved.announcements) MINISTRY_ANNOUNCEMENTS=saved.announcements;
+  if(saved.prayers)            PRAYERS=saved.prayers;
+  if(saved.schedSlots)         SCHED_SLOTS=saved.schedSlots;
+  if(saved.announcements)      MINISTRY_ANNOUNCEMENTS=saved.announcements;
+  if(saved.attendanceRecords)  ATTENDANCE_RECORDS=saved.attendanceRecords;
 
   // ── Step 5b: Auto-join group if signup included an invite code ───────────
   var pendingCode=(user.user_metadata||{}).group_code;
@@ -1388,15 +1389,21 @@ async function loadProfile(user){
     }catch(e){ console.log('member fetch error:',e); }
   }
 
-  // ── Step 5d: Member — fetch leader's GD from Supabase so they see group data ─
-  if(p.role==='member' && CU.groupId && (!GD||!GD.name)){
+  // ── Step 5d: Member — fetch leader's full data (GD, prayers, etc.) ──────────
+  if(p.role==='member' && CU.groupId){
     try{
       var {data:leaderProf}=await sb.from('profiles').select('app_data').eq('id',CU.groupId).single();
       if(leaderProf&&leaderProf.app_data){
         var leaderSaved=JSON.parse(leaderProf.app_data);
-        if(leaderSaved&&leaderSaved.GD&&leaderSaved.GD.name) GD=leaderSaved.GD;
+        if(leaderSaved){
+          if(leaderSaved.GD&&leaderSaved.GD.name) GD=leaderSaved.GD;
+          if(leaderSaved.prayers&&leaderSaved.prayers.length>0) PRAYERS=leaderSaved.prayers;
+          if(leaderSaved.schedSlots&&leaderSaved.schedSlots.length>0) SCHED_SLOTS=leaderSaved.schedSlots;
+          if(leaderSaved.groupRealMembers) CU.groupRealMembers=leaderSaved.groupRealMembers;
+          if(leaderSaved.placeholderMembers) CU.placeholderMembers=leaderSaved.placeholderMembers;
+        }
       }
-    }catch(e){ console.log('leader GD fetch error:',e); }
+    }catch(e){ console.log('leader data fetch error:',e); }
   }
 
   // ── Step 6: Persist ──────────────────────────────────────────────────────
@@ -1424,7 +1431,8 @@ function buildPayload(){
     GD:          GD,
     prayers:     PRAYERS,
     schedSlots:  typeof SCHED_SLOTS!=='undefined'?SCHED_SLOTS:[],
-    announcements:MINISTRY_ANNOUNCEMENTS||[]
+    announcements:MINISTRY_ANNOUNCEMENTS||[],
+    attendanceRecords:ATTENDANCE_RECORDS||[]
   };
 }
 
@@ -1671,8 +1679,8 @@ function pgGrpHome(){
     return;
   }
   var g=GD;
-  var memberPrayers=DEMO?PRAYERS.slice(0,2):[];
-  var stats=DEMO?g.stats:{meetings:0,answered:0,books:0};
+  var memberPrayers=PRAYERS.filter(function(p){return !p.archived}).slice(0,2);
+  var stats=g&&g.stats?g.stats:{meetings:0,answered:0,books:0};
   if(isLeader()) topAction('<button class="btn btn-g btn-sm" onclick="modalRenameGroup()">✏️ rename group</button>');
   pc('<div class="mhero">'
     +'<div class="mhero-label">📅 '+g.name+'</div>'
@@ -1693,8 +1701,8 @@ function pgGrpHome(){
     +'<div class="iq-label">💬 this meeting\'s icebreaker</div>'
     +'<div class="iq-text">"'+currentIceQ()+'"</div>'
     +'<div style="display:flex;gap:8px;margin-top:10px">'
-    +(iceSkip>0?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgGrpHome()">← back</button>':'')
-    +'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgGrpHome()">skip →</button>'
+    +(isLeader()&&iceSkip>0?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgGrpHome()">← back</button>':'')
+    +(isLeader()?'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgGrpHome()">skip →</button>':'')
     +'<button class="btn btn-s btn-sm" onclick="goPage(\'ice\')">see all →</button>'
     +'</div>'
     +'</div>'
@@ -1703,7 +1711,8 @@ function pgGrpHome(){
     +(isLeader()?'<button class="btn btn-g btn-sm" onclick="modalEditMeeting()">edit</button>':'')+'</div>'
     +(g.study
       ?'<div style="font-size:15px;font-weight:600;color:var(--dark);margin-bottom:6px">'+g.study+'</div>'
-        +(g.hw?'<div style="font-size:13px;color:var(--mid);line-height:1.6"><strong>homework:</strong> '+g.hw+'</div>':'')
+        +(g.hw?'<div style="font-size:13px;color:var(--mid);line-height:1.6;margin-bottom:10px"><strong>homework:</strong> '+g.hw+'</div>':'')
+        +(getStudyForTitle(g.study)?'<button class="btn btn-p btn-sm" onclick="viewStudyGuide(\''+g.study+'\',\'home\')">📖 view study guide</button>':'')
       :'<div style="font-size:14px;color:var(--muted);padding:4px 0">no study selected yet.'+(isLeader()?' <a onclick="goPage(\'resources\')">pick one →</a>':'')+'</div>')
     +'</div>'
     +'</div>'
@@ -2190,8 +2199,8 @@ function pgMeeting(){
     +'<div class="card"><div class="card-header"><span class="card-title">💬 icebreaker for this meeting</span></div>'
     +'<div class="iq-text" style="font-size:18px;margin-bottom:12px">"'+currentIceQ()+'"</div>'
     +'<div style="display:flex;gap:8px">'
-    +(iceSkip>0?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgMeeting()">← back</button>':'')
-    +'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgMeeting()">skip →</button>'
+    +(isLeader()&&iceSkip>0?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgMeeting()">← back</button>':'')
+    +(isLeader()?'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgMeeting()">skip →</button>':'')
     +'<button class="btn btn-s btn-sm" onclick="goPage(\'ice\')">see all →</button>'
     +'</div>'
     +'</div>');
@@ -2210,6 +2219,26 @@ function pgAttend(){
   if(members.length===0){pc(empty('✅','no members yet','add members to your group to start tracking attendance.','<button class="btn btn-p" onclick="goPage(\'members\')">manage members →</button>'));return;}
   var todayStr=new Date().toISOString().split('T')[0];
   topAction('<button class="btn btn-p btn-sm" onclick="saveAttendance()">save attendance</button>');
+  var histHtml='';
+  if(ATTENDANCE_RECORDS.length>0){
+    histHtml='<div class="sec-label" style="margin-top:24px">📋 attendance history</div>'
+      +'<div class="card">'
+      +ATTENDANCE_RECORDS.map(function(rec){
+        var present=rec.records.filter(function(r){return r.status==='present';}).length;
+        var total=rec.records.length;
+        return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+          +'<strong style="font-size:14px;color:var(--dark)">'+rec.label+'</strong>'
+          +'<span class="badge badge-green">'+present+'/'+total+' present</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:var(--mid);line-height:1.8">'
+          +rec.records.map(function(r){
+            return '<span style="margin-right:14px">'+(r.status==='present'?'✓ ':r.status==='absent'?'✗ ':'· ')+r.name+'</span>';
+          }).join('')
+          +'</div></div>';
+      }).join('')
+      +'</div>';
+  }
   pc('<div class="card" style="margin-bottom:14px">'
     +'<div class="card-header"><span class="card-title">attendance date</span></div>'
     +'<input type="date" id="att-date" value="'+todayStr+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:inherit;font-size:14px;margin-top:4px">'
@@ -2225,7 +2254,7 @@ function pgAttend(){
         +'<button class="att-btn" id="att-a-'+i+'" onclick="markAtt('+i+',\'a\')">✗ absent</button>'
         +'</div></div>';
     }).join('')
-    +'</div>');
+    +'</div>'+histHtml);
 }
 function markAtt(i,status){
   ['p','a'].forEach(function(s){
@@ -2238,7 +2267,19 @@ function saveAttendance(){
   var dateStr=dateEl?dateEl.value:new Date().toISOString().split('T')[0];
   var d=new Date(dateStr+'T12:00:00');
   var label=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  var members=DEMO?DEMO_MEMBERS:((CU.groupRealMembers||[]).concat(CU.placeholderMembers||[]));
+  var records=members.map(function(m,i){
+    var pBtn=document.getElementById('att-p-'+i);
+    var aBtn=document.getElementById('att-a-'+i);
+    var status=pBtn&&pBtn.classList.contains('present')?'present':aBtn&&aBtn.classList.contains('absent')?'absent':'unmarked';
+    return {name:m.n, status:status};
+  });
+  // Remove existing record for same date and add new one
+  ATTENDANCE_RECORDS=ATTENDANCE_RECORDS.filter(function(r){return r.date!==dateStr;});
+  ATTENDANCE_RECORDS.unshift({date:dateStr, label:label, records:records});
+  autoSave();
   toast('attendance saved for '+label+' ✅');
+  pgAttend();
 }
 
 /* ============================================================
@@ -2342,8 +2383,8 @@ function pgIce(){
     +'<div class="iq-footer">'
     +'<span class="iq-tip">advances after each meeting is logged 🌀</span>'
     +'<div style="display:flex;gap:8px">'
-    +(canBack?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgIce()">← back</button>':'')
-    +'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgIce()">skip →</button>'
+    +(isLeader()&&canBack?'<button class="btn btn-g btn-sm" onclick="iceSkip--;pgIce()">← back</button>':'')
+    +(isLeader()?'<button class="btn btn-g btn-sm" onclick="iceSkip++;pgIce()">skip →</button>':'')
     +'</div></div></div>'
     +'<div class="card"><div class="card-header"><span class="card-title">how to use this</span></div>'
     +'<div style="font-size:14px;color:var(--mid);line-height:1.8">'
@@ -2364,6 +2405,9 @@ function pgIce(){
    PAGE: SCHEDULING POLL
    ============================================================ */
 // Unified slot list — demo starts with sample data, real accounts start empty
+// Attendance records: [{date, label, records:[{name, status}]}]
+var ATTENDANCE_RECORDS=[];
+
 var SCHED_SLOTS=DEMO?[
   {id:1,day:'Tuesday',date:'March 4',time:'7:30 PM',votes:4},
   {id:2,day:'Wednesday',date:'March 5',time:'7:00 PM',votes:6},
@@ -2652,7 +2696,10 @@ function pgResources(){
       +'<div class="invite-label">📖 currently studying</div>'
       +'<div style="font-size:16px;font-weight:600;color:var(--dark);margin-bottom:4px">'+GD.study+'</div>'
       +(GD.hw?'<div style="font-size:13px;color:var(--mid);margin-bottom:10px"><strong>homework:</strong> '+GD.hw+'</div>':'')
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'
+      +(getStudyForTitle(GD.study)?'<button class="btn btn-p btn-sm" onclick="viewStudyGuide(\''+GD.study+'\',\'resources\')">📖 view study guide</button>':'')
       +(isLeader()?'<button class="btn btn-s btn-sm" onclick="modalEditMeeting()">edit study details</button>':'')
+      +'</div>'
       +'</div>'
     :'')
     +'<div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,#FFF3E0,#FFF8F0);border-color:var(--accent-l)">'
