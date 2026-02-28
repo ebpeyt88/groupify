@@ -1364,6 +1364,7 @@ async function loadProfile(user){
   if(saved.schedSlots)         SCHED_SLOTS=saved.schedSlots;
   if(saved.announcements)      MINISTRY_ANNOUNCEMENTS=saved.announcements;
   if(saved.attendanceRecords)  ATTENDANCE_RECORDS=saved.attendanceRecords;
+  if(saved.archivedGroups)     ARCHIVED_GROUPS=saved.archivedGroups;
 
   // ── Step 5b: Auto-join group if signup included an invite code ───────────
   var pendingCode=(user.user_metadata||{}).group_code;
@@ -1432,7 +1433,8 @@ function buildPayload(){
     prayers:     PRAYERS,
     schedSlots:  typeof SCHED_SLOTS!=='undefined'?SCHED_SLOTS:[],
     announcements:MINISTRY_ANNOUNCEMENTS||[],
-    attendanceRecords:ATTENDANCE_RECORDS||[]
+    attendanceRecords:ATTENDANCE_RECORDS||[],
+    archivedGroups:ARCHIVED_GROUPS||[]
   };
 }
 
@@ -1693,6 +1695,7 @@ function pgGrpHome(){
     +(isLeader()?'<div class="mhero-actions" style="display:flex;gap:8px;flex-wrap:wrap">'
       +'<button class="btn btn-a" onclick="modalEditMeeting()">edit meeting details</button>'
       +(GD&&GD.study&&getStudyForTitle(GD.study)?'<button class="btn btn-g" onclick="modalMarkMeetingDone()">✓ meeting done</button>':'')
+      +'<button class="btn btn-g" onclick="modalEndGroup()" style="margin-left:auto;opacity:.7;font-size:12px">⏹ end group</button>'
       +'</div>':'')
     +'</div>'
     +'<div class="g2">'
@@ -1734,7 +1737,22 @@ function pgGrpHome(){
     +'</div>'
     +'</div>'
     +'</div>'
-    +'</div>');
+    +'</div>'
+    +(ARCHIVED_GROUPS.length>0
+      ?'<div class="sec-label" style="margin-top:24px">📦 archived groups</div>'
+        +'<div class="card">'
+        +ARCHIVED_GROUPS.map(function(ag,i){
+          return '<div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+            +'<div>'
+            +'<div style="font-size:14px;font-weight:600;color:var(--dark)">'+ag.name+'</div>'
+            +'<div style="font-size:12px;color:var(--muted);margin-top:2px">ended '+ag.archivedAt+' · '+ag.meetingsCount+' meetings</div>'
+            +'</div>'
+            +(isLeader()?'<button class="btn btn-g btn-sm" onclick="modalRestartGroup('+i+')">restart →</button>':'')
+            +'</div>';
+        }).join('')
+        +'</div>'
+      :'')
+    );
 }
 
 /* ============================================================
@@ -2456,6 +2474,8 @@ function pgIce(){
 // Unified slot list — demo starts with sample data, real accounts start empty
 // Attendance records: [{date, label, records:[{name, status}]}]
 var ATTENDANCE_RECORDS=[];
+// Archived groups: [{snapshot of GD, members, prayers, attendance, archivedAt}]
+var ARCHIVED_GROUPS=[];
 
 var SCHED_SLOTS=DEMO?[
   {id:1,day:'Tuesday',date:'March 4',time:'7:30 PM',votes:4},
@@ -2953,6 +2973,71 @@ function doMerge(placeholderName){
    MODALS
    ============================================================ */
 function mClose(){return '<button class="modal-close" onclick="closeModal()">✕</button>';}
+
+function modalEndGroup(){
+  if(!GD||!GD.name){toast('no active group to end');return;}
+  openModal(mClose()
+    +'<h2>⏹ end group</h2>'
+    +'<div style="font-size:14px;color:var(--mid);margin-bottom:18px;line-height:1.6">ending <strong>'+GD.name+'</strong> will archive it. all history, prayers, and attendance records will be saved. you can restart it anytime from your group home.</div>'
+    +'<div class="banner" style="margin-bottom:18px">⚠️ group members will no longer be connected to this group after it is ended.</div>'
+    +'<button class="btn btn-p btn-full" onclick="doEndGroup()" style="background:#c0392b;border-color:#c0392b">⏹ end & archive this group</button>'
+    +'<button class="btn btn-g btn-full" style="margin-top:8px" onclick="closeModal()">cancel</button>');
+}
+function doEndGroup(){
+  if(!GD||!GD.name) return;
+  var archive={
+    name:GD.name,
+    start:GD.start,
+    archivedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    meetingsCount:(GD.stats&&GD.stats.meetings)||0,
+    stats:GD.stats||{},
+    next:GD.next||{},
+    study:GD.study||'',
+    hw:GD.hw||'',
+    members:(CU.groupRealMembers||[]).concat(CU.placeholderMembers||[]),
+    prayers:PRAYERS.slice(),
+    attendance:ATTENDANCE_RECORDS.slice()
+  };
+  ARCHIVED_GROUPS.unshift(archive);
+  // Clear active group state
+  GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  CU.groupId=null;
+  CU.groupRealMembers=[];
+  CU.placeholderMembers=[];
+  PRAYERS=[];
+  ATTENDANCE_RECORDS=[];
+  SCHED_SLOTS=[];
+  autoSave();
+  closeModal();
+  toast('group archived 📦');
+  pgGrpHome();
+}
+function modalRestartGroup(idx){
+  var ag=ARCHIVED_GROUPS[idx];
+  if(!ag) return;
+  openModal(mClose()
+    +'<h2>🔄 restart group</h2>'
+    +'<div style="font-size:14px;color:var(--mid);margin-bottom:18px;line-height:1.6">restart <strong>'+ag.name+'</strong>? this will restore the group history and make it active again.</div>'
+    +'<button class="btn btn-p btn-full" onclick="doRestartGroup('+idx+')">🔄 restart this group</button>'
+    +'<button class="btn btn-g btn-full" style="margin-top:8px" onclick="closeModal()">cancel</button>');
+}
+function doRestartGroup(idx){
+  var ag=ARCHIVED_GROUPS[idx];
+  if(!ag) return;
+  // Restore group data
+  GD={name:ag.name,start:ag.start,next:ag.next||{},study:ag.study||'',hw:ag.hw||'',stats:ag.stats||{meetings:0,answered:0,books:0}};
+  CU.groupId=CU.id;
+  CU.groupRealMembers=ag.members.filter(function(m){return m.real;});
+  CU.placeholderMembers=ag.members.filter(function(m){return !m.real;});
+  PRAYERS=ag.prayers||[];
+  ATTENDANCE_RECORDS=ag.attendance||[];
+  // Remove from archived list
+  ARCHIVED_GROUPS.splice(idx,1);
+  autoSave();
+  closeModal();
+  toast('group restarted 🎉');
+  pgGrpHome();
+}
 
 function modalCreateGroup(){
   openModal(mClose()+'<h2>👥 create your group</h2>'
