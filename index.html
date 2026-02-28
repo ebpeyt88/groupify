@@ -2314,11 +2314,13 @@ function prayerListHtml(list){
 }
 function prayerItemHtml(p){
   if(p.archived) return ''; // archived prayers don't render normally
+  var myUid=DEMO?'demo':(CU&&CU.id?CU.id:'anon');
+  var iHavePrayed=p.prayedBy&&p.prayedBy.indexOf(myUid)>-1;
   return '<div class="prayer-item'+(p.ans?' answered':'')+'">'
     +'<div class="prayer-meta"><span class="prayer-author">'+p.au+'</span><span class="prayer-date">'+p.dt+'</span></div>'
     +'<div class="prayer-text">'+p.txt+'</div>'
     +'<div class="prayer-actions">'
-    +'<button class="pray-btn'+(p.prayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(p.prayed?'prayed!':'i prayed')+'</button>'
+    +'<button class="pray-btn'+(iHavePrayed?' prayed':'')+'" onclick="togPray('+p.id+',this)">🙏 '+(iHavePrayed?'prayed!':'i prayed')+'</button>'
     +'<span class="pray-count">'+p.cnt+' praying</span>'
     +(p.ans?'<span class="badge badge-green">✨ answered!</span>':'')
     +(!p.ans&&isLeader()?'<button class="btn btn-s btn-sm" onclick="modalMarkAnswered('+p.id+')">mark answered</button>':'')
@@ -2350,10 +2352,37 @@ function renderArchived(){
 function togPray(id,btn){
   var p=PRAYERS.find(function(x){return x.id===id});
   if(!p) return;
-  p.prayed=!p.prayed; p.cnt+=p.prayed?1:-1;
-  btn.className='pray-btn'+(p.prayed?' prayed':'');
-  btn.textContent='🙏 '+(p.prayed?'prayed!':'i prayed');
+  // Per-user tracking: prayedBy is array of user IDs
+  if(!p.prayedBy) p.prayedBy=[];
+  var uid=DEMO?'demo':(CU&&CU.id?CU.id:'anon');
+  var alreadyPrayed=p.prayedBy.indexOf(uid)>-1;
+  if(alreadyPrayed){
+    // Allow unpraying only for your own prayer
+    p.prayedBy=p.prayedBy.filter(function(x){return x!==uid;});
+    p.cnt=Math.max(0,p.cnt-1);
+    btn.className='pray-btn';
+    btn.textContent='🙏 i prayed';
+  } else {
+    p.prayedBy.push(uid);
+    p.cnt=(p.cnt||0)+1;
+    btn.className='pray-btn prayed';
+    btn.textContent='🙏 prayed!';
+  }
   btn.nextElementSibling.textContent=p.cnt+' praying';
+  autoSave();
+  // Write updated prayers back to Supabase so other users see the count
+  if(!DEMO&&CU&&CU.id&&sb){
+    var leaderId=CU.type==='member'?CU.groupId:CU.id;
+    if(leaderId){
+      sb.from('profiles').select('app_data').eq('id',leaderId).single()
+        .then(function(r){
+          if(!r.data) return;
+          var saved={}; try{saved=JSON.parse(r.data.app_data||'{}');}catch(e){}
+          saved.prayers=PRAYERS;
+          sb.from('profiles').update({app_data:JSON.stringify(saved)}).eq('id',leaderId).then(function(){}).catch(function(){});
+        }).catch(function(){});
+    }
+  }
 }
 function filterPrayers(f,el){
   document.querySelectorAll('#prayer-tabs .tab').forEach(function(t){t.classList.remove('active')});
@@ -2417,6 +2446,10 @@ var SCHED_SLOTS=DEMO?[
 
 function pgSched(){
   if(!DEMO&&!CU.groupId){pc(empty('🗓️','no group yet','scheduling polls will be available once your group is set up.',''));return;}
+  // Rebuild votedSlots from per-slot voterIds so votes persist across sessions
+  var uid=DEMO?'demo':(CU&&CU.id?CU.id:'anon');
+  votedSlots=new Set();
+  SCHED_SLOTS.forEach(function(s){ if(s.voterIds&&s.voterIds.indexOf(uid)>-1) votedSlots.add(s.id); });
   if(isLeader()) topAction(
     '<button class="btn btn-p btn-sm" onclick="modalAddSlot()">+ add time slot</button>'
     +(SCHED_SLOTS.length>0?'<button class="btn btn-s btn-sm" style="margin-left:8px" onclick="publishPoll()">📢 publish poll</button>':'')
@@ -2442,16 +2475,22 @@ function pgSched(){
 }
 function toggleVote(id,btn){
   var slot=SCHED_SLOTS.find(function(s){return s.id===id});
-  if(votedSlots.has(id)){
+  if(!slot) return;
+  if(!slot.voterIds) slot.voterIds=[];
+  var uid=DEMO?'demo':(CU&&CU.id?CU.id:'anon');
+  var hasVoted=slot.voterIds.indexOf(uid)>-1;
+  if(hasVoted){
+    slot.voterIds=slot.voterIds.filter(function(x){return x!==uid;});
+    slot.votes=Math.max(0,(slot.votes||1)-1);
     votedSlots.delete(id);
     btn.className='poll-vote'; btn.textContent='vote';
     btn.closest('.poll-slot').classList.remove('voted');
-    if(slot) slot.votes=Math.max(0,(slot.votes||1)-1);
   } else {
+    slot.voterIds.push(uid);
+    slot.votes=(slot.votes||0)+1;
     votedSlots.add(id);
     btn.className='poll-vote voted'; btn.textContent='✓ voted';
     btn.closest('.poll-slot').classList.add('voted');
-    if(slot) slot.votes=(slot.votes||0)+1;
   }
   // Update count and bar width in DOM without full re-render
   var maxVotes=Math.max.apply(null,SCHED_SLOTS.map(function(x){return x.votes||0}))||1;
@@ -2472,6 +2511,20 @@ function toggleVote(id,btn){
       if(barEl) barEl.style.width=Math.round(((es.votes||0)/maxVotes)*100)+'%';
     });
   });
+  autoSave();
+  // Write updated slots to leader's app_data so all members see current totals
+  if(!DEMO&&CU&&CU.id&&sb){
+    var leaderId=CU.type==='member'?CU.groupId:CU.id;
+    if(leaderId){
+      sb.from('profiles').select('app_data').eq('id',leaderId).single()
+        .then(function(r){
+          if(!r.data) return;
+          var saved={}; try{saved=JSON.parse(r.data.app_data||'{}');}catch(e){}
+          saved.schedSlots=SCHED_SLOTS;
+          sb.from('profiles').update({app_data:JSON.stringify(saved)}).eq('id',leaderId).then(function(){}).catch(function(){});
+        }).catch(function(){});
+    }
+  }
   toast('vote saved ✅');
 }
 function deleteSlot(id){
