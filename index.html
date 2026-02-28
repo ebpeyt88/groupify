@@ -2209,37 +2209,51 @@ function pgMeeting(){
 /* ============================================================
    PAGE: ATTENDANCE
    ============================================================ */
-function pgAttend(){
+var attendTab='take';
+function pgAttend(tab){
+  if(tab) attendTab=tab;
   if(!DEMO&&!CU.groupId){pc(empty('✅','no group yet','attendance tracking will be available once your group is set up.',''));return;}
-  // Fix #12: use ALL members — real + placeholders — not just demo members
-  var members=DEMO?DEMO_MEMBERS:(
-    (CU.groupRealMembers||[]).concat(CU.placeholderMembers||[])
-  );
   if(!isLeader()){pc(empty('✅','attendance','only group leaders can take attendance.',''));return;}
-  if(members.length===0){pc(empty('✅','no members yet','add members to your group to start tracking attendance.','<button class="btn btn-p" onclick="goPage(\'members\')">manage members →</button>'));return;}
-  var todayStr=new Date().toISOString().split('T')[0];
-  topAction('<button class="btn btn-p btn-sm" onclick="saveAttendance()">save attendance</button>');
-  var histHtml='';
-  if(ATTENDANCE_RECORDS.length>0){
-    histHtml='<div class="sec-label" style="margin-top:24px">📋 attendance history</div>'
-      +'<div class="card">'
-      +ATTENDANCE_RECORDS.map(function(rec){
+  var members=DEMO?DEMO_MEMBERS:((CU.groupRealMembers||[]).concat(CU.placeholderMembers||[]));
+  var tabs='<div class="tabs" style="margin-bottom:18px">'
+    +'<div class="tab'+(attendTab==='take'?' active':'')+'" onclick="pgAttend(\'take\')">✅ take attendance</div>'
+    +'<div class="tab'+(attendTab==='history'?' active':'')+'" onclick="pgAttend(\'history\')">📋 history ('+ATTENDANCE_RECORDS.length+')</div>'
+    +'</div>';
+  if(attendTab==='history'){
+    if(ATTENDANCE_RECORDS.length===0){
+      pc(tabs+empty('📋','no records yet','save your first attendance session and it will appear here.',''));
+      return;
+    }
+    pc(tabs+'<div class="card">'
+      +ATTENDANCE_RECORDS.map(function(rec,ri){
         var present=rec.records.filter(function(r){return r.status==='present';}).length;
         var total=rec.records.length;
-        return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        return '<div style="padding:14px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
           +'<strong style="font-size:14px;color:var(--dark)">'+rec.label+'</strong>'
+          +'<div style="display:flex;gap:6px;align-items:center">'
           +'<span class="badge badge-green">'+present+'/'+total+' present</span>'
-          +'</div>'
-          +'<div style="font-size:12px;color:var(--mid);line-height:1.8">'
+          +'<button onclick="deleteAttRecord('+ri+')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px" title="delete">✕</button>'
+          +'</div></div>'
+          +'<div style="display:flex;gap:12px;flex-wrap:wrap">'
           +rec.records.map(function(r){
-            return '<span style="margin-right:14px">'+(r.status==='present'?'✓ ':r.status==='absent'?'✗ ':'· ')+r.name+'</span>';
+            var col=r.status==='present'?'var(--brand)':r.status==='absent'?'#d44':'var(--muted)';
+            var ic=r.status==='present'?'✓':r.status==='absent'?'✗':'·';
+            return '<span style="font-size:12px;color:'+col+'">'+ic+' '+r.name+'</span>';
           }).join('')
           +'</div></div>';
       }).join('')
-      +'</div>';
+      +'</div>');
+    return;
   }
-  pc('<div class="card" style="margin-bottom:14px">'
+  if(members.length===0){
+    pc(tabs+empty('✅','no members yet','add members to your group to start tracking attendance.','<button class="btn btn-p" onclick="goPage(\'members\')">manage members →</button>'));
+    return;
+  }
+  var todayStr=new Date().toISOString().split('T')[0];
+  topAction('<button class="btn btn-p btn-sm" onclick="saveAttendance()">save attendance</button>');
+  pc(tabs
+    +'<div class="card" style="margin-bottom:14px">'
     +'<div class="card-header"><span class="card-title">attendance date</span></div>'
     +'<input type="date" id="att-date" value="'+todayStr+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:inherit;font-size:14px;margin-top:4px">'
     +'</div>'
@@ -2247,14 +2261,20 @@ function pgAttend(){
     +'<div class="card-header"><span class="card-title">mark attendance</span></div>'
     +members.map(function(m,i){
       return '<div class="att-row">'
-        +'<div class="m-av'+(m.real?'':' placeholder')+'">'+(m.real?m.i:'?')+'</div>'
+        +'<div class="m-av'+(m.real?'':' placeholder')+'">'+( m.real?m.i:'?')+'</div>'
         +'<div><div class="m-name">'+m.n+'</div><div class="m-role">'+m.r+'</div></div>'
         +'<div class="att-btns">'
         +'<button class="att-btn" id="att-p-'+i+'" onclick="markAtt('+i+',\'p\')">✓ present</button>'
         +'<button class="att-btn" id="att-a-'+i+'" onclick="markAtt('+i+',\'a\')">✗ absent</button>'
         +'</div></div>';
     }).join('')
-    +'</div>'+histHtml);
+    +'</div>');
+}
+function deleteAttRecord(idx){
+  ATTENDANCE_RECORDS.splice(idx,1);
+  autoSave();
+  pgAttend('history');
+  toast('record deleted');
 }
 function markAtt(i,status){
   ['p','a'].forEach(function(s){
@@ -2924,6 +2944,7 @@ function doMerge(placeholderName){
       CU.placeholderMembers=(CU.placeholderMembers||[]).filter(function(m){return m.n!==placeholderName});
     }
   }
+  autoSave();
   closeModal(); pgMembers();
   toast('✅ '+placeholderName+' merged into '+realName+'\'s account');
 }
