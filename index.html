@@ -1371,8 +1371,52 @@ async function loadProfile(user){
     }
   }
 
-  // Populate GD from group row
+  // ── Populate GD from group row + migrate old app_data if needed ─────────────
+  // Load old app_data — may contain rich data not yet in the groups table
+  var oldSaved={};
+  try{
+    var rawLs=localStorage.getItem('gfy_'+user.id);
+    if(rawLs){ var parsedLs=JSON.parse(rawLs); if(parsedLs&&parsedLs.GD) oldSaved=parsedLs; }
+  }catch(e){}
+  if(!oldSaved.GD&&p.app_data){
+    try{ var parsedDb=JSON.parse(p.app_data); if(parsedDb&&parsedDb.GD) oldSaved=parsedDb; }catch(e){}
+  }
+  var oldGD=oldSaved.GD||null;
+
   if(groupRow){
+    // Check if groups table has full details (meeting_day is a good indicator)
+    var needsMigration=!groupRow.meeting_day&&oldGD&&oldGD.name===groupRow.name;
+    if(needsMigration&&oldGD){
+      // Migrate rich data from app_data into groups table (one-time)
+      var migratePayload={
+        start_date:oldGD.start||null,
+        meeting_day:(oldGD.next&&oldGD.next.day)||null,
+        next_meeting_date:(oldGD.next&&oldGD.next.date)||null,
+        meeting_time:(oldGD.next&&oldGD.next.time)||null,
+        meeting_location:(oldGD.next&&oldGD.next.loc)||null,
+        frequency:(oldGD.next&&oldGD.next.freq)||'weekly',
+        current_study:oldGD.study||null,
+        homework:oldGD.hw||null,
+        study_session:oldGD._studySession||0,
+        meetings_count:(oldGD.stats&&oldGD.stats.meetings)||0,
+        answered_count:(oldGD.stats&&oldGD.stats.answered)||0,
+        books_count:(oldGD.stats&&oldGD.stats.books)||0
+      };
+      sb.from('groups').update(migratePayload).eq('id',groupRow.id).then(function(){console.log('group details migrated');}).catch(function(){});
+      // Merge migrated data into groupRow for this session
+      Object.assign(groupRow, {
+        start_date:migratePayload.start_date,
+        meeting_day:migratePayload.meeting_day,
+        next_meeting_date:migratePayload.next_meeting_date,
+        meeting_time:migratePayload.meeting_time,
+        meeting_location:migratePayload.meeting_location,
+        frequency:migratePayload.frequency,
+        current_study:migratePayload.current_study,
+        homework:migratePayload.homework,
+        study_session:migratePayload.study_session,
+        meetings_count:migratePayload.meetings_count
+      });
+    }
     GD={
       name:groupRow.name||'',
       start:groupRow.start_date||'',
@@ -1392,10 +1436,12 @@ async function loadProfile(user){
         books:groupRow.books_count||0
       }
     };
+    // Also restore placeholder members from old app_data if group_members only has real users
+    if(oldSaved.placeholderMembers&&oldSaved.placeholderMembers.length>0&&CU.placeholderMembers.length===0){
+      CU.placeholderMembers=oldSaved.placeholderMembers;
+    }
   } else {
-    var lsSaved={};
-    try{ var r2=localStorage.getItem('gfy_'+user.id); if(r2) lsSaved=JSON.parse(r2); }catch(e){}
-    GD=(lsSaved.GD&&lsSaved.GD.name)?lsSaved.GD
+    GD=(oldGD&&oldGD.name)?oldGD
       :{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
   }
 
@@ -1420,13 +1466,31 @@ async function loadProfile(user){
       var {data:pRows}=await sb.from('prayers')
         .select('id,user_id,text,is_answered,answered_note,pray_count,archived,created_at,profiles(full_name),prayer_interactions(user_id)')
         .eq('group_id',CU.groupDbId).order('created_at',{ascending:false});
-      if(pRows){
+      if(pRows&&pRows.length>0){
         PRAYERS=pRows.map(function(r){
           var pBy=(r.prayer_interactions||[]).map(function(pi){return pi.user_id;});
           return {id:r.id,au:(r.profiles&&r.profiles.full_name)||'member',txt:r.text,
             dt:fmtAgo(r.created_at),ans:r.is_answered||false,anote:r.answered_note||'',
             cnt:r.pray_count||pBy.length,prayedBy:pBy,archived:r.archived||false};
         });
+      } else if(oldSaved.prayers&&oldSaved.prayers.length>0){
+        // Migrate old prayers from app_data into prayers table (one-time)
+        console.log('migrating',oldSaved.prayers.length,'prayers from app_data');
+        var pInserts=oldSaved.prayers.filter(function(p){return p.txt;}).map(function(p){
+          return {group_id:CU.groupDbId,user_id:user.id,text:p.txt,
+            is_answered:p.ans||false,answered_note:p.anote||null,
+            pray_count:p.cnt||0,archived:p.archived||false};
+        });
+        if(pInserts.length>0){
+          var {data:inserted}=await sb.from('prayers').insert(pInserts).select('id,text');
+          if(inserted){
+            PRAYERS=inserted.map(function(r,i){
+              var old_p=oldSaved.prayers[i]||{};
+              return {id:r.id,au:old_p.au||CU.name,txt:r.text,dt:old_p.dt||'',
+                ans:old_p.ans||false,anote:old_p.anote||'',cnt:old_p.cnt||0,prayedBy:[],archived:old_p.archived||false};
+            });
+          }
+        }
       }
     }catch(e){ console.log('prayer fetch error:',e); }
   }
@@ -1463,6 +1527,19 @@ async function loadProfile(user){
           var dt=new Date(d+'T12:00:00');
           return {date:d,label:dt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),records:byDate[d]};
         });
+      } else if(oldSaved.attendanceRecords&&oldSaved.attendanceRecords.length>0){
+        // Migrate old attendance from app_data into attendance table (one-time)
+        console.log('migrating attendance records from app_data');
+        ATTENDANCE_RECORDS=oldSaved.attendanceRecords;
+        var attInserts=[];
+        oldSaved.attendanceRecords.forEach(function(rec){
+          (rec.records||[]).forEach(function(r){
+            attInserts.push({group_id:CU.groupDbId,user_id:user.id,member_name:r.name,meeting_date:rec.date,present:r.status==='present'});
+          });
+        });
+        if(attInserts.length>0){
+          sb.from('attendance').insert(attInserts).then(function(){console.log('attendance migrated');}).catch(function(){});
+        }
       }
     }catch(e){ console.log('attendance fetch error:',e); }
   }
