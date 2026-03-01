@@ -1298,10 +1298,8 @@ async function doSignIn(){
 async function loadProfile(user){
   DEMO=false;
   PRAYERS=[];
-  SCHED_SLOTS=[];
-  ATTENDANCE_RECORDS=[];
 
-  // ── Step 1: Auth profile ──────────────────────────────────────────────────
+  // ── Step 1: Load the auth profile from Supabase ──────────────────────────
   var {data:p}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(!p){
     var meta=user.user_metadata||{};
@@ -1311,24 +1309,33 @@ async function loadProfile(user){
   }
   if(!p){toast('error loading your profile — please try again 😕');return;}
 
-  // ── Step 2: Codes (always deterministic from user.id) ────────────────────
-  var grpCode=genCode('GRP',user.id+'_grp');
-  var minCode=genCode('MIN',user.id+'_min');
-
-  // ── Step 3: app_data (localStorage first, Supabase fallback) ─────────────
-  // app_data now only holds: placeholders, archivedGroups, groupResources, ministryResources
+  // ── Step 2: Load saved app data ──────────────────────────────────────────
+  // Priority: localStorage first (always available), then Supabase app_data
+  var lsK='gfy_'+user.id;
   var saved={};
+
+  // Try localStorage first
   try{
-    var raw=localStorage.getItem('gfy_'+user.id);
-    if(raw){ var ls=JSON.parse(raw); if(ls) saved=ls; }
+    var raw=localStorage.getItem(lsK);
+    if(raw){ var ls=JSON.parse(raw); if(ls&&ls.groupCode) saved=ls; }
   }catch(e){}
-  if(!saved.v){
+
+  // If localStorage had nothing, try Supabase app_data column (cross-device sync)
+  if(!saved.groupCode){
     try{
-      if(p.app_data){ var db=JSON.parse(p.app_data); if(db) saved=db; }
+      if(p.app_data){ var db=JSON.parse(p.app_data); if(db&&db.groupCode) saved=db; }
     }catch(e){}
   }
 
-  // ── Step 4: Build CU ─────────────────────────────────────────────────────
+  // ── Step 3: Invite codes ─────────────────────────────────────────────────────
+  // For leaders/ministry: use the code stored in profiles.ministry_id if available
+  // (written there on login). Fall back to deterministic hash of user.id.
+  // This ensures the displayed code always matches what findLeaderByCode searches.
+  // Codes are always deterministic — derived from user.id
+  var grpCode=genCode('GRP',user.id+'_grp');
+  var minCode=genCode('MIN',user.id+'_min');
+
+  // ── Step 4: Reconstitute CU ──────────────────────────────────────────────
   var typeMap={ministry:'ministry leader',leader:'group leader',member:'group member'};
   CU={
     id:user.id, email:user.email,
@@ -1336,235 +1343,75 @@ async function loadProfile(user){
     init:initials(p.full_name||user.email),
     type:p.role||'member',
     role:typeMap[p.role]||'group member',
-    groupId:    null,
-    groupDbId:  null,
+    groupId:    saved.groupId || p.group_id || null,
     ministryId:(p.role==='ministry'?user.id:null),
     churchName:p.church_name||'',
     groupCode:  grpCode,
     minCode:    minCode,
     groupResources:     saved.groupResources||[],
     placeholderMembers: saved.placeholderMembers||[],
-    groupRealMembers:   []
+    groupRealMembers:   saved.groupRealMembers||[]
   };
+
+  // ── Step 5: Restore global state ─────────────────────────────────────────
   if(saved.ministryResources) REAL_MINISTRY_RESOURCES=saved.ministryResources;
-  if(saved.announcements)     MINISTRY_ANNOUNCEMENTS=saved.announcements;
-  if(saved.archivedGroups)    ARCHIVED_GROUPS=saved.archivedGroups;
 
-  // ── Step 5: Load group from groups table ─────────────────────────────────
-  var {data:membership}=await sb.from('group_members')
-    .select('group_id,role').eq('user_id',user.id).maybeSingle();
+  GD=(saved.GD&&saved.GD.name)
+    ? saved.GD
+    : {name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
 
-  var groupRow=null;
-  if(membership){
-    CU.groupDbId=membership.group_id;
-    CU.groupId=membership.group_id;
-    var {data:gr}=await sb.from('groups').select('*').eq('id',membership.group_id).maybeSingle();
-    groupRow=gr;
+  if(saved.prayers)            PRAYERS=saved.prayers;
+  if(saved.schedSlots)         SCHED_SLOTS=saved.schedSlots;
+  if(saved.announcements)      MINISTRY_ANNOUNCEMENTS=saved.announcements;
+  if(saved.attendanceRecords)  ATTENDANCE_RECORDS=saved.attendanceRecords;
+  if(saved.archivedGroups)     ARCHIVED_GROUPS=saved.archivedGroups;
+
+  // ── Step 5b: Auto-join group if signup included an invite code ───────────
+  var pendingCode=(user.user_metadata||{}).group_code;
+  if(pendingCode && !CU.groupId){
+    await autoJoinGroup(pendingCode);
   }
 
-  // Fallback: find group by created_by (for leaders whose group predates migration)
-  if(!CU.groupId){
-    var {data:myGrp}=await sb.from('groups').select('*').eq('created_by',user.id).eq('archived',false).maybeSingle();
-    if(myGrp){
-      await sb.from('group_members').upsert({group_id:myGrp.id,user_id:user.id,role:p.role},{onConflict:'group_id,user_id'});
-      CU.groupDbId=myGrp.id; CU.groupId=myGrp.id; groupRow=myGrp;
-    }
-  }
-
-  // ── Populate GD from group row + migrate old app_data if needed ─────────────
-  // Load old app_data — may contain rich data not yet in the groups table
-  var oldSaved={};
-  try{
-    var rawLs=localStorage.getItem('gfy_'+user.id);
-    if(rawLs){ var parsedLs=JSON.parse(rawLs); if(parsedLs&&parsedLs.GD) oldSaved=parsedLs; }
-  }catch(e){}
-  if(!oldSaved.GD&&p.app_data){
-    try{ var parsedDb=JSON.parse(p.app_data); if(parsedDb&&parsedDb.GD) oldSaved=parsedDb; }catch(e){}
-  }
-  var oldGD=oldSaved.GD||null;
-
-  if(groupRow){
-    // Check if groups table has full details (meeting_day is a good indicator)
-    var needsMigration=!groupRow.meeting_day&&oldGD&&oldGD.name===groupRow.name;
-    if(needsMigration&&oldGD){
-      // Migrate rich data from app_data into groups table (one-time)
-      var migratePayload={
-        start_date:oldGD.start||null,
-        meeting_day:(oldGD.next&&oldGD.next.day)||null,
-        next_meeting_date:(oldGD.next&&oldGD.next.date)||null,
-        meeting_time:(oldGD.next&&oldGD.next.time)||null,
-        meeting_location:(oldGD.next&&oldGD.next.loc)||null,
-        frequency:(oldGD.next&&oldGD.next.freq)||'weekly',
-        current_study:oldGD.study||null,
-        homework:oldGD.hw||null,
-        study_session:oldGD._studySession||0,
-        meetings_count:(oldGD.stats&&oldGD.stats.meetings)||0,
-        answered_count:(oldGD.stats&&oldGD.stats.answered)||0,
-        books_count:(oldGD.stats&&oldGD.stats.books)||0
-      };
-      sb.from('groups').update(migratePayload).eq('id',groupRow.id).then(function(){console.log('group details migrated');}).catch(function(){});
-      // Merge migrated data into groupRow for this session
-      Object.assign(groupRow, {
-        start_date:migratePayload.start_date,
-        meeting_day:migratePayload.meeting_day,
-        next_meeting_date:migratePayload.next_meeting_date,
-        meeting_time:migratePayload.meeting_time,
-        meeting_location:migratePayload.meeting_location,
-        frequency:migratePayload.frequency,
-        current_study:migratePayload.current_study,
-        homework:migratePayload.homework,
-        study_session:migratePayload.study_session,
-        meetings_count:migratePayload.meetings_count
-      });
-    }
-    GD={
-      name:groupRow.name||'',
-      start:groupRow.start_date||'',
-      next:{
-        day:groupRow.meeting_day||'',
-        date:groupRow.next_meeting_date||'',
-        time:groupRow.meeting_time||'',
-        loc:groupRow.meeting_location||'',
-        freq:groupRow.frequency||'weekly'
-      },
-      study:groupRow.current_study||'',
-      hw:groupRow.homework||'',
-      _studySession:groupRow.study_session||0,
-      stats:{
-        meetings:groupRow.meetings_count||0,
-        answered:groupRow.answered_count||0,
-        books:groupRow.books_count||0
-      }
-    };
-    // Also restore placeholder members from old app_data if group_members only has real users
-    if(oldSaved.placeholderMembers&&oldSaved.placeholderMembers.length>0&&CU.placeholderMembers.length===0){
-      CU.placeholderMembers=oldSaved.placeholderMembers;
-    }
-  } else {
-    GD=(oldGD&&oldGD.name)?oldGD
-      :{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
-  }
-
-  // ── Step 6: Load members from group_members ───────────────────────────────
-  if(CU.groupDbId){
+  // ── Step 5c: Leader — pull real members who have joined via group_id ────────
+  if((p.role==='leader'||p.role==='ministry') && CU.groupId){
     try{
-      var {data:mRows}=await sb.from('group_members')
-        .select('user_id,role,profiles(id,full_name)')
-        .eq('group_id',CU.groupDbId).neq('user_id',user.id);
-      if(mRows&&mRows.length>0){
-        CU.groupRealMembers=mRows.map(function(m){
-          var pr=m.profiles||{};
-          return {id:m.user_id,n:pr.full_name||m.user_id,r:m.role||'group member',i:initials(pr.full_name||'?'),real:true};
+      var {data:memberRows}=await sb.from('profiles')
+        .select('id,full_name,role')
+        .eq('group_id', user.id)
+        .neq('id', user.id);
+      if(memberRows&&memberRows.length>0){
+        var existing=CU.groupRealMembers||[];
+        memberRows.forEach(function(m){
+          var already=existing.find(function(e){return e.id===m.id;});
+          if(!already) existing.push({id:m.id,n:m.full_name,r:'group member',i:initials(m.full_name),real:true});
         });
+        CU.groupRealMembers=existing;
       }
     }catch(e){ console.log('member fetch error:',e); }
   }
 
-  // ── Step 7: Load prayers ──────────────────────────────────────────────────
-  if(CU.groupDbId){
+  // ── Step 5d: Member — fetch leader's full data (GD, prayers, etc.) ──────────
+  if(p.role==='member' && CU.groupId){
     try{
-      var {data:pRows}=await sb.from('prayers')
-        .select('id,user_id,text,is_answered,answered_note,pray_count,archived,created_at,profiles(full_name),prayer_interactions(user_id)')
-        .eq('group_id',CU.groupDbId).order('created_at',{ascending:false});
-      if(pRows&&pRows.length>0){
-        PRAYERS=pRows.map(function(r){
-          var pBy=(r.prayer_interactions||[]).map(function(pi){return pi.user_id;});
-          return {id:r.id,au:(r.profiles&&r.profiles.full_name)||'member',txt:r.text,
-            dt:fmtAgo(r.created_at),ans:r.is_answered||false,anote:r.answered_note||'',
-            cnt:r.pray_count||pBy.length,prayedBy:pBy,archived:r.archived||false};
-        });
-      } else if(oldSaved.prayers&&oldSaved.prayers.length>0){
-        // Migrate old prayers from app_data into prayers table (one-time)
-        console.log('migrating',oldSaved.prayers.length,'prayers from app_data');
-        var pInserts=oldSaved.prayers.filter(function(p){return p.txt;}).map(function(p){
-          return {group_id:CU.groupDbId,user_id:user.id,text:p.txt,
-            is_answered:p.ans||false,answered_note:p.anote||null,
-            pray_count:p.cnt||0,archived:p.archived||false};
-        });
-        if(pInserts.length>0){
-          var {data:inserted}=await sb.from('prayers').insert(pInserts).select('id,text');
-          if(inserted){
-            PRAYERS=inserted.map(function(r,i){
-              var old_p=oldSaved.prayers[i]||{};
-              return {id:r.id,au:old_p.au||CU.name,txt:r.text,dt:old_p.dt||'',
-                ans:old_p.ans||false,anote:old_p.anote||'',cnt:old_p.cnt||0,prayedBy:[],archived:old_p.archived||false};
-            });
-          }
+      var {data:leaderProf}=await sb.from('profiles').select('app_data').eq('id',CU.groupId).single();
+      if(leaderProf&&leaderProf.app_data){
+        var leaderSaved=JSON.parse(leaderProf.app_data);
+        if(leaderSaved){
+          if(leaderSaved.GD&&leaderSaved.GD.name) GD=leaderSaved.GD;
+          if(leaderSaved.prayers&&leaderSaved.prayers.length>0) PRAYERS=leaderSaved.prayers;
+          if(leaderSaved.schedSlots&&leaderSaved.schedSlots.length>0) SCHED_SLOTS=leaderSaved.schedSlots;
+          if(leaderSaved.groupRealMembers) CU.groupRealMembers=leaderSaved.groupRealMembers;
+          if(leaderSaved.placeholderMembers) CU.placeholderMembers=leaderSaved.placeholderMembers;
         }
       }
-    }catch(e){ console.log('prayer fetch error:',e); }
+    }catch(e){ console.log('leader data fetch error:',e); }
   }
 
-  // ── Step 8: Load schedule ─────────────────────────────────────────────────
-  if(CU.groupDbId){
-    try{
-      var {data:slotRows}=await sb.from('schedule_options')
-        .select('id,day,time,date,created_at,schedule_votes(user_id)')
-        .eq('group_id',CU.groupDbId).order('created_at',{ascending:true});
-      if(slotRows){
-        SCHED_SLOTS=slotRows.map(function(r){
-          var vIds=(r.schedule_votes||[]).map(function(v){return v.user_id;});
-          return {id:r.id,day:r.day,date:r.date||'',time:r.time,votes:vIds.length,voterIds:vIds};
-        });
-      }
-    }catch(e){ console.log('schedule fetch error:',e); }
-  }
-
-  // ── Step 9: Load attendance ───────────────────────────────────────────────
-  if(CU.groupDbId){
-    try{
-      var {data:attRows}=await sb.from('attendance')
-        .select('meeting_date,user_id,present,member_name,profiles(full_name)')
-        .eq('group_id',CU.groupDbId).order('meeting_date',{ascending:false});
-      if(attRows&&attRows.length>0){
-        var byDate={};
-        attRows.forEach(function(r){
-          var d=r.meeting_date;
-          if(!byDate[d]) byDate[d]=[];
-          byDate[d].push({name:r.member_name||(r.profiles&&r.profiles.full_name)||'member',status:r.present?'present':'absent'});
-        });
-        ATTENDANCE_RECORDS=Object.keys(byDate).sort().reverse().map(function(d){
-          var dt=new Date(d+'T12:00:00');
-          return {date:d,label:dt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),records:byDate[d]};
-        });
-      } else if(oldSaved.attendanceRecords&&oldSaved.attendanceRecords.length>0){
-        // Migrate old attendance from app_data into attendance table (one-time)
-        console.log('migrating attendance records from app_data');
-        ATTENDANCE_RECORDS=oldSaved.attendanceRecords;
-        var attInserts=[];
-        oldSaved.attendanceRecords.forEach(function(rec){
-          (rec.records||[]).forEach(function(r){
-            attInserts.push({group_id:CU.groupDbId,user_id:user.id,member_name:r.name,meeting_date:rec.date,present:r.status==='present'});
-          });
-        });
-        if(attInserts.length>0){
-          sb.from('attendance').insert(attInserts).then(function(){console.log('attendance migrated');}).catch(function(){});
-        }
-      }
-    }catch(e){ console.log('attendance fetch error:',e); }
-  }
-
-  // ── Step 10: Auto-join if pending invite code ─────────────────────────────
-  var pendingCode=(user.user_metadata||{}).group_code;
-  if(pendingCode&&!CU.groupId) await autoJoinGroup(pendingCode);
-
-  // ── Step 11: Cache locally ────────────────────────────────────────────────
+  // ── Step 6: Persist ──────────────────────────────────────────────────────
   saveLocal();
   saveRemote();
-  enterApp();
-}
 
-function fmtAgo(ts){
-  if(!ts) return '';
-  var d=new Date(ts),now=new Date(),diff=Math.floor((now-d)/1000);
-  if(diff<60) return 'just now';
-  if(diff<3600) return Math.floor(diff/60)+' min ago';
-  if(diff<86400) return Math.floor(diff/3600)+' hr ago';
-  var days=Math.floor(diff/86400);
-  if(days===1) return 'yesterday';
-  if(days<7) return days+' days ago';
-  if(days<30) return Math.floor(days/7)+'wk ago';
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  enterApp();
 }
 
 // ─── PERSISTENCE ─────────────────────────────────────────────────────────────
@@ -1573,13 +1420,20 @@ function fmtAgo(ts){
 // On load: try Supabase first (shared across devices), fall back to localStorage
 
 function buildPayload(){
-  // app_data now only holds things without a dedicated table
   return {
-    v:3,
+    v:2,
+    groupId:   CU.groupId,   // ← persisted so it survives logout
+    groupCode: CU.groupCode,
+    minCode:   CU.minCode,
     groupResources:    CU.groupResources||[],
     placeholderMembers:CU.placeholderMembers||[],
+    groupRealMembers:  CU.groupRealMembers||[],
     ministryResources: REAL_MINISTRY_RESOURCES,
+    GD:          GD,
+    prayers:     PRAYERS,
+    schedSlots:  typeof SCHED_SLOTS!=='undefined'?SCHED_SLOTS:[],
     announcements:MINISTRY_ANNOUNCEMENTS||[],
+    attendanceRecords:ATTENDANCE_RECORDS||[],
     archivedGroups:ARCHIVED_GROUPS||[]
   };
 }
@@ -2446,7 +2300,7 @@ function markAtt(i,status){
     if(btn) btn.className='att-btn'+(s===status?' '+(s==='p'?'present':'absent'):'');
   });
 }
-async function saveAttendance(){
+function saveAttendance(){
   var dateEl=document.getElementById('att-date');
   var dateStr=dateEl?dateEl.value:new Date().toISOString().split('T')[0];
   var d=new Date(dateStr+'T12:00:00');
@@ -2456,27 +2310,13 @@ async function saveAttendance(){
     var pBtn=document.getElementById('att-p-'+i);
     var aBtn=document.getElementById('att-a-'+i);
     var status=pBtn&&pBtn.classList.contains('present')?'present':aBtn&&aBtn.classList.contains('absent')?'absent':'unmarked';
-    return {name:m.n,userId:m.id||null,status:status};
+    return {name:m.n, status:status};
   });
-  if(!DEMO&&CU.groupDbId&&sb){
-    await sb.from('attendance').delete().eq('group_id',CU.groupDbId).eq('meeting_date',dateStr);
-    var rows=records.map(function(r){
-      return {group_id:CU.groupDbId,user_id:r.userId||CU.id,member_name:r.name,meeting_date:dateStr,present:r.status==='present'};
-    });
-    if(rows.length>0){
-      var {error:aErr}=await sb.from('attendance').insert(rows);
-      if(aErr) console.log('attendance save error:',aErr.message);
-    }
-    var alreadyCounted=ATTENDANCE_RECORDS.some(function(r){return r.date===dateStr;});
-    if(!alreadyCounted&&GD&&GD.stats){
-      GD.stats.meetings=(GD.stats.meetings||0)+1;
-      sb.from('groups').update({meetings_count:GD.stats.meetings}).eq('id',CU.groupDbId).then(function(){}).catch(function(){});
-    }
-  }
+  // Remove existing record for same date and add new one
   ATTENDANCE_RECORDS=ATTENDANCE_RECORDS.filter(function(r){return r.date!==dateStr;});
-  ATTENDANCE_RECORDS.unshift({date:dateStr,label:label,records:records});
+  ATTENDANCE_RECORDS.unshift({date:dateStr, label:label, records:records});
   autoSave();
-  toast('attendance saved for '+label);
+  toast('attendance saved for '+label+' ✅');
   pgAttend();
 }
 
@@ -2528,17 +2368,11 @@ function prayerItemHtml(p){
 function archivePrayer(id){
   var p=PRAYERS.find(function(x){return x.id===id});
   if(p){p.archived=true;}
-  if(!DEMO&&sb&&typeof id==='string'){
-    sb.from('prayers').update({archived:true}).eq('id',id).then(function(){}).catch(function(){});
-  }
   pgPrayers(); autoSave(); toast('prayer request archived');
 }
 function unarchivePrayer(id){
   var p=PRAYERS.find(function(x){return x.id===id});
   if(p){p.archived=false;}
-  if(!DEMO&&sb&&typeof id==='string'){
-    sb.from('prayers').update({archived:false}).eq('id',id).then(function(){}).catch(function(){});
-  }
   renderArchived(); autoSave();
 }
 function renderArchived(){
@@ -2553,31 +2387,40 @@ function renderArchived(){
         +'</div>';
     }).join('');
 }
-async function togPray(id,btn){
+function togPray(id,btn){
   var p=PRAYERS.find(function(x){return x.id===id});
   if(!p) return;
+  // Per-user tracking: prayedBy is array of user IDs
   if(!p.prayedBy) p.prayedBy=[];
   var uid=DEMO?'demo':(CU&&CU.id?CU.id:'anon');
   var alreadyPrayed=p.prayedBy.indexOf(uid)>-1;
   if(alreadyPrayed){
+    // Allow unpraying only for your own prayer
     p.prayedBy=p.prayedBy.filter(function(x){return x!==uid;});
     p.cnt=Math.max(0,p.cnt-1);
-    btn.className='pray-btn'; btn.textContent='?? i prayed';
-    if(!DEMO&&sb&&typeof id==='string'){
-      sb.from('prayer_interactions').delete().eq('prayer_id',id).eq('user_id',uid).then(function(){
-        sb.from('prayers').update({pray_count:p.cnt}).eq('id',id).then(function(){}).catch(function(){});
-      }).catch(function(){});
-    }
+    btn.className='pray-btn';
+    btn.textContent='🙏 i prayed';
   } else {
-    p.prayedBy.push(uid); p.cnt=(p.cnt||0)+1;
-    btn.className='pray-btn prayed'; btn.textContent='?? prayed!';
-    if(!DEMO&&sb&&typeof id==='string'){
-      sb.from('prayer_interactions').upsert({prayer_id:id,user_id:uid},{onConflict:'prayer_id,user_id'}).then(function(){
-        sb.from('prayers').update({pray_count:p.cnt}).eq('id',id).then(function(){}).catch(function(){});
-      }).catch(function(){});
-    }
+    p.prayedBy.push(uid);
+    p.cnt=(p.cnt||0)+1;
+    btn.className='pray-btn prayed';
+    btn.textContent='🙏 prayed!';
   }
   btn.nextElementSibling.textContent=p.cnt+' praying';
+  autoSave();
+  // Write updated prayers back to Supabase so other users see the count
+  if(!DEMO&&CU&&CU.id&&sb){
+    var leaderId=CU.type==='member'?CU.groupId:CU.id;
+    if(leaderId){
+      sb.from('profiles').select('app_data').eq('id',leaderId).single()
+        .then(function(r){
+          if(!r.data) return;
+          var saved={}; try{saved=JSON.parse(r.data.app_data||'{}');}catch(e){}
+          saved.prayers=PRAYERS;
+          sb.from('profiles').update({app_data:JSON.stringify(saved)}).eq('id',leaderId).then(function(){}).catch(function(){});
+        }).catch(function(){});
+    }
+  }
 }
 function filterPrayers(f,el){
   document.querySelectorAll('#prayer-tabs .tab').forEach(function(t){t.classList.remove('active')});
@@ -2671,20 +2514,20 @@ function renderSchedPoll(){
 function pgSched(){
   if(!DEMO&&!CU.groupId){pc(empty('🗓️','no group yet','scheduling polls will be available once your group is set up.',''));return;}
   if(DEMO){ renderSchedPoll(); return; }
+  // Always fetch fresh slot data from leader's app_data so all votes are current
   pc('<div style="text-align:center;padding:40px;color:var(--muted)">loading poll...</div>');
-  if(!CU.groupDbId){ renderSchedPoll(); return; }
-  sb.from('schedule_options')
-    .select('id,day,time,date,created_at,schedule_votes(user_id)')
-    .eq('group_id',CU.groupDbId).order('created_at',{ascending:true})
+  var leaderId=CU.type==='member'?CU.groupId:CU.id;
+  sb.from('profiles').select('app_data').eq('id',leaderId).single()
     .then(function(r){
-      if(r.data){
-        SCHED_SLOTS=r.data.map(function(row){
-          var vIds=(row.schedule_votes||[]).map(function(v){return v.user_id;});
-          return {id:row.id,day:row.day,date:row.date||'',time:row.time,votes:vIds.length,voterIds:vIds};
-        });
+      if(r.data&&r.data.app_data){
+        try{
+          var saved=JSON.parse(r.data.app_data);
+          if(saved.schedSlots&&saved.schedSlots.length>0) SCHED_SLOTS=saved.schedSlots;
+        }catch(e){}
       }
       renderSchedPoll();
-    }).catch(function(){ renderSchedPoll(); });
+    })
+    .catch(function(){ renderSchedPoll(); });
 }
 function toggleVote(id,btn){
   var slot=SCHED_SLOTS.find(function(s){return s.id===id});
@@ -2724,22 +2567,26 @@ function toggleVote(id,btn){
       if(barEl) barEl.style.width=Math.round(((es.votes||0)/maxVotes)*100)+'%';
     });
   });
-  if(!DEMO&&sb&&typeof id==='string'){
-    if(votedSlots.has(id)){
-      sb.from('schedule_votes').upsert({option_id:id,user_id:CU.id},{onConflict:'option_id,user_id'}).then(function(){}).catch(function(){});
-    } else {
-      sb.from('schedule_votes').delete().eq('option_id',id).eq('user_id',CU.id).then(function(){}).catch(function(){});
+  autoSave();
+  // Write updated slots to leader's app_data so all members see current totals
+  if(!DEMO&&CU&&CU.id&&sb){
+    var leaderId=CU.type==='member'?CU.groupId:CU.id;
+    if(leaderId){
+      sb.from('profiles').select('app_data').eq('id',leaderId).single()
+        .then(function(r){
+          if(!r.data) return;
+          var saved={}; try{saved=JSON.parse(r.data.app_data||'{}');}catch(e){}
+          saved.schedSlots=SCHED_SLOTS;
+          sb.from('profiles').update({app_data:JSON.stringify(saved)}).eq('id',leaderId).then(function(){}).catch(function(){});
+        }).catch(function(){});
     }
   }
-  toast('vote saved');
+  toast('vote saved ✅');
 }
 function deleteSlot(id){
   var idx=SCHED_SLOTS.findIndex(function(s){return s.id===id});
   if(idx>-1) SCHED_SLOTS.splice(idx,1);
   votedSlots.delete(id);
-  if(!DEMO&&sb&&typeof id==='string'){
-    sb.from('schedule_options').delete().eq('id',id).then(function(){}).catch(function(){});
-  }
   pgSched();
 }
 function publishPoll(){
@@ -3139,22 +2986,27 @@ function modalEndGroup(){
 function doEndGroup(){
   if(!GD||!GD.name) return;
   var archive={
-    name:GD.name, start:GD.start, dbId:CU.groupDbId||null,
+    name:GD.name,
+    start:GD.start,
     archivedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
     meetingsCount:(GD.stats&&GD.stats.meetings)||0,
-    stats:GD.stats||{}, next:GD.next||{}, study:GD.study||'', hw:GD.hw||'',
+    stats:GD.stats||{},
+    next:GD.next||{},
+    study:GD.study||'',
+    hw:GD.hw||'',
     members:(CU.groupRealMembers||[]).concat(CU.placeholderMembers||[]),
-    prayers:PRAYERS.slice(), attendance:ATTENDANCE_RECORDS.slice()
+    prayers:PRAYERS.slice(),
+    attendance:ATTENDANCE_RECORDS.slice()
   };
   ARCHIVED_GROUPS.unshift(archive);
-  // Archive in DB, remove from group_members
-  if(!DEMO&&CU.groupDbId&&sb){
-    sb.from('groups').update({archived:true,archived_at:new Date().toISOString()}).eq('id',CU.groupDbId).then(function(){}).catch(function(){});
-    sb.from('group_members').delete().eq('group_id',CU.groupDbId).then(function(){}).catch(function(){});
-  }
+  // Clear active group state
   GD={name:'',start:'',next:{},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
-  CU.groupId=null; CU.groupDbId=null; CU.groupRealMembers=[]; CU.placeholderMembers=[];
-  PRAYERS=[]; ATTENDANCE_RECORDS=[]; SCHED_SLOTS=[];
+  CU.groupId=null;
+  CU.groupRealMembers=[];
+  CU.placeholderMembers=[];
+  PRAYERS=[];
+  ATTENDANCE_RECORDS=[];
+  SCHED_SLOTS=[];
   autoSave();
   closeModal();
   toast('group archived 📦');
@@ -3169,22 +3021,21 @@ function modalRestartGroup(idx){
     +'<button class="btn btn-p btn-full" onclick="doRestartGroup('+idx+')">🔄 restart this group</button>'
     +'<button class="btn btn-g btn-full" style="margin-top:8px" onclick="closeModal()">cancel</button>');
 }
-async function doRestartGroup(idx){
+function doRestartGroup(idx){
   var ag=ARCHIVED_GROUPS[idx];
   if(!ag) return;
-  toast('restarting...');
-  if(!DEMO&&ag.dbId&&sb){
-    await sb.from('groups').update({archived:false,archived_at:null}).eq('id',ag.dbId);
-    await sb.from('group_members').upsert({group_id:ag.dbId,user_id:CU.id,role:CU.type},{onConflict:'group_id,user_id'});
-    CU.groupId=ag.dbId; CU.groupDbId=ag.dbId;
-  }
+  // Restore group data
   GD={name:ag.name,start:ag.start,next:ag.next||{},study:ag.study||'',hw:ag.hw||'',stats:ag.stats||{meetings:0,answered:0,books:0}};
-  CU.groupRealMembers=ag.members?ag.members.filter(function(m){return m.real;}):[];
-  CU.placeholderMembers=ag.members?ag.members.filter(function(m){return !m.real;}):[];
-  PRAYERS=ag.prayers||[]; ATTENDANCE_RECORDS=ag.attendance||[];
+  CU.groupId=CU.id;
+  CU.groupRealMembers=ag.members.filter(function(m){return m.real;});
+  CU.placeholderMembers=ag.members.filter(function(m){return !m.real;});
+  PRAYERS=ag.prayers||[];
+  ATTENDANCE_RECORDS=ag.attendance||[];
+  // Remove from archived list
   ARCHIVED_GROUPS.splice(idx,1);
-  autoSave(); closeModal();
-  toast('group restarted!');
+  autoSave();
+  closeModal();
+  toast('group restarted 🎉');
   pgGrpHome();
 }
 
@@ -3209,18 +3060,17 @@ async function doCreateGroup(){
   var time=document.getElementById('cg-time').value;
   var freq=document.getElementById('cg-freq').value;
 
-  toast('creating group...');
-  var {data:newGroup,error:grpErr}=await sb.from('groups').insert({
-    name:name, start_date:start||null, meeting_day:day,
-    next_meeting_date:date||null, meeting_time:time, frequency:freq,
-    created_by:CU.id, meetings_count:0, answered_count:0, books_count:0
-  }).select().single();
-  if(grpErr||!newGroup){toast('error creating group: '+(grpErr?grpErr.message:'unknown'));return;}
+  // Use the leader's own user ID as the group ID — simple, reliable, no extra table needed.
+  // Members store this ID in their profiles.group_id to link to this group.
+  CU.groupId=CU.id;
+  // Write group_id to own profile so members can reference it
+  if(CU.id){
+    sb.from('profiles').update({group_id:CU.id}).eq('id',CU.id).then(function(){}).catch(function(){});
+  }
 
-  await sb.from('group_members').insert({group_id:newGroup.id,user_id:CU.id,role:CU.type});
-  CU.groupId=newGroup.id; CU.groupDbId=newGroup.id;
   GD={name:name,start:start,next:{day:day,date:date,time:time,loc:'',freq:freq},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
-  closeModal(); autoSave();
+  closeModal();
+  autoSave();
   goPage(CU.type==='ministry'?'grp-home':'home');
   toast('group created! 🎉');
 }
@@ -3235,10 +3085,8 @@ function saveGroupName(){
   var name=document.getElementById('rg-name').value.trim();
   if(!name){toast('please enter a group name 😊');return;}
   GD.name=name;
-  if(!DEMO&&CU.groupDbId&&sb){
-    sb.from('groups').update({name:name}).eq('id',CU.groupDbId).then(function(){}).catch(function(){});
-  }
-  autoSave(); closeModal();
+  autoSave();
+  closeModal();
   toast('group renamed to "'+name+'" ✅');
   pgGrpHome();
 }
@@ -3274,10 +3122,7 @@ function doMarkMeetingDone(){
   // Advance session and pre-fill homework for next session
   GD._studySession=nextSi;
   var nextS=study.sessions[nextSi];
-  GD.hw=nextS.reading+(nextS.assignment?' — '+nextS.assignment:'');
-  if(!DEMO&&CU.groupDbId&&sb){
-    sb.from('groups').update({meetings_count:GD.stats.meetings,study_session:nextSi,homework:GD.hw,current_study:GD.study||null}).eq('id',CU.groupDbId).then(function(){}).catch(function(){});
-  }
+  GD.hw='📖 '+nextS.reading+(nextS.assignment?' — '+nextS.assignment:'');
   autoSave();
   closeModal();
   toast('session '+(nextSi+1)+' unlocked — homework updated! 📖');
@@ -3360,13 +3205,6 @@ function saveMeeting(){
   if(studyChanged){ GD._studySession=0; }
   closeModal();
   toast('meeting details saved 📅');
-  if(!DEMO&&CU.groupDbId&&sb){
-    sb.from('groups').update({
-      meeting_day:GD.next.day, next_meeting_date:GD.next.date||null,
-      meeting_time:GD.next.time, meeting_location:GD.next.loc, frequency:GD.next.freq,
-      current_study:GD.study||null, homework:GD.hw||null, study_session:GD._studySession||0
-    }).eq('id',CU.groupDbId).then(function(r){if(r.error)console.log('saveMeeting err:',r.error.message);}).catch(function(){});
-  }
   autoSave();
   var active=document.querySelector('.ni.active');
   if(active) goPage(active.id.replace('ni-',''));
@@ -3378,18 +3216,11 @@ function modalAddPrayer(){
     +'<div class="fg"><label>category (optional)</label><select><option>general</option><option>health</option><option>relationships</option><option>work / finances</option><option>praise & gratitude</option></select></div>'
     +'<button class="btn btn-p btn-full" onclick="submitPrayer()">post prayer request 🙏</button>');
 }
-async function submitPrayer(){
+function submitPrayer(){
   var t=document.getElementById('np').value.trim();
   if(!t){toast('please write your prayer request 😊');return;}
-  if(!DEMO&&CU.groupDbId&&sb){
-    var {data:newP,error:pErr}=await sb.from('prayers').insert({
-      group_id:CU.groupDbId,user_id:CU.id,text:t,pray_count:0,is_answered:false
-    }).select('id').single();
-    if(pErr){toast('error posting prayer: '+pErr.message);return;}
-    PRAYERS.unshift({id:newP.id,au:CU.name,txt:t,dt:'just now',ans:false,cnt:0,prayedBy:[],archived:false});
-  } else {
-    PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'just now',ans:false,cnt:0,prayedBy:[],archived:false});
-  }
+  // Always save locally — this is the source of truth
+  PRAYERS.unshift({id:Date.now(),au:CU.name,txt:t,dt:'just now',ans:false,cnt:0,prayed:false});
   closeModal(); pgPrayers(); toast('prayer request posted 🙏');
   autoSave();
 }
@@ -3404,12 +3235,8 @@ function modalMarkAnswered(id){
 }
 function doMarkAnswered(id){
   var p=PRAYERS.find(function(x){return x.id===id});
-  var note=document.getElementById('ans-note').value;
-  if(p){p.ans=true;p.anote=note;}
-  if(!DEMO&&sb&&typeof id==='string'){
-    sb.from('prayers').update({is_answered:true,answered_note:note}).eq('id',id).then(function(){}).catch(function(){});
-  }
-  closeModal(); pgPrayers(); toast('answered prayer logged! ??');
+  if(p){p.ans=true;p.anote=document.getElementById('ans-note').value;}
+  closeModal(); pgPrayers(); toast('answered prayer logged! 🎉');
   autoSave();
 }
 
@@ -3531,15 +3358,18 @@ async function autoJoinGroup(code){
   try{
     var leader=await findLeaderByCode(code);
     if(!leader){ console.log('autoJoinGroup: no leader found for code',code); return; }
-    var {data:grp}=await sb.from('groups').select('*').eq('created_by',leader.id).eq('archived',false).maybeSingle();
-    if(!grp){ console.log('autoJoinGroup: no group found for leader'); return; }
-    await sb.from('group_members').upsert({group_id:grp.id,user_id:CU.id,role:'member'},{onConflict:'group_id,user_id'});
-    CU.groupId=grp.id; CU.groupDbId=grp.id;
-    GD={name:grp.name||'',start:grp.start_date||'',
-      next:{day:grp.meeting_day||'',date:grp.next_meeting_date||'',time:grp.meeting_time||'',loc:grp.meeting_location||'',freq:grp.frequency||'weekly'},
-      study:grp.current_study||'',hw:grp.homework||'',
-      stats:{meetings:grp.meetings_count||0,answered:grp.answered_count||0,books:grp.books_count||0}};
+
+    // Write group_id to member's own profiles row
+    var r=await sb.from('profiles').update({group_id:leader.id}).eq('id',CU.id);
+    if(r.error){ console.log('autoJoin group_id error:',r.error.message); }
+
+    // Set state in memory
+    CU.groupId=leader.id;
+    GD=leader.data.GD||{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+
+    // Clear the pending code from auth metadata so this doesn't re-run on next login
     sb.auth.updateUser({data:{group_code:''}}).then(function(){}).catch(function(){});
+
   }catch(e){ console.log('autoJoinGroup error:',e); }
 }
 
@@ -3558,30 +3388,15 @@ async function doJoinGroup(){
   var leader=await findLeaderByCode(code);
   if(!leader){toast('code not found — double-check with your group leader 😊');return;}
 
-  var {data:grp}=await sb.from('groups').select('*').eq('created_by',leader.id).eq('archived',false).maybeSingle();
-  if(!grp){toast('group not found — ask your leader to log in and set up their group first 😊');return;}
+  // Write group_id to member's profiles row so leader can find them
+  var r=await sb.from('profiles').update({group_id:leader.id}).eq('id',CU.id);
+  if(r.error){ console.log('group_id write error:',r.error.message); }
 
-  var {error:joinErr}=await sb.from('group_members')
-    .upsert({group_id:grp.id,user_id:CU.id,role:'member'},{onConflict:'group_id,user_id'});
-  if(joinErr){toast('error joining: '+joinErr.message);return;}
-
-  CU.groupId=grp.id; CU.groupDbId=grp.id;
-  GD={name:grp.name||'',start:grp.start_date||'',
-    next:{day:grp.meeting_day||'',date:grp.next_meeting_date||'',time:grp.meeting_time||'',loc:grp.meeting_location||'',freq:grp.frequency||'weekly'},
-    study:grp.current_study||'',hw:grp.homework||'',
-    stats:{meetings:grp.meetings_count||0,answered:grp.answered_count||0,books:grp.books_count||0}};
-
-  var {data:pRows}=await sb.from('prayers')
-    .select('id,user_id,text,is_answered,pray_count,archived,created_at,profiles(full_name),prayer_interactions(user_id)')
-    .eq('group_id',grp.id).order('created_at',{ascending:false});
-  if(pRows) PRAYERS=pRows.map(function(r){
-    var pBy=(r.prayer_interactions||[]).map(function(pi){return pi.user_id;});
-    return {id:r.id,au:(r.profiles&&r.profiles.full_name)||'member',txt:r.text,dt:fmtAgo(r.created_at),
-      ans:r.is_answered||false,cnt:r.pray_count||pBy.length,prayedBy:pBy,archived:r.archived||false};
-  });
-
-  autoSave(); closeModal();
-  toast('you\'ve joined '+(GD.name||'the group')+'!');
+  CU.groupId=leader.id;
+  GD=leader.data.GD||{name:'',start:'',next:{day:'',time:'',loc:'',freq:'weekly'},study:'',hw:'',stats:{meetings:0,answered:0,books:0}};
+  autoSave();
+  closeModal();
+  toast('you\'ve joined '+(GD.name||'the group')+'! 🎉');
   goPage('home');
 }
 
@@ -3808,21 +3623,13 @@ function modalAddSlot(){
     +'<div class="fg"><label>time</label><select id="sl-time">'+timeOptions()+'</select></div>'
     +'<button class="btn btn-p btn-full" onclick="saveSlot()">add slot</button>');
 }
-async function saveSlot(){
+function saveSlot(){
   var day=document.getElementById('sl-day').value;
   var date=document.getElementById('sl-date').value.trim();
   var time=document.getElementById('sl-time').value;
   if(!date){toast('please enter a date 😊');return;}
-  if(!DEMO&&CU.groupDbId&&sb){
-    var {data:ns,error:slErr}=await sb.from('schedule_options').insert({
-      group_id:CU.groupDbId,created_by:CU.id,day:day,date:date,time:time
-    }).select('id').single();
-    if(slErr){toast('error adding slot: '+slErr.message);return;}
-    SCHED_SLOTS.push({id:ns.id,day:day,date:date,time:time,votes:0,voterIds:[]});
-  } else {
-    SCHED_SLOTS.push({id:Date.now(),day:day,date:date,time:time,votes:0,voterIds:[]});
-  }
-  closeModal(); pgSched(); toast('slot added');
+  SCHED_SLOTS.push({id:Date.now(),day:day,date:date,time:time,votes:0});
+  closeModal(); pgSched(); toast('slot added 🗓️');
 }
 
 function modalStudyQuiz(){
